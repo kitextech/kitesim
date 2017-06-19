@@ -375,8 +375,6 @@
       // calculate lift, drag for wing, VerticalWings, elevator, rudder
       // ap = apparent wind
 
-
-
       var apWing = apparentWindKite.clone().applyQuaternion(wing.getWorldQuaternion().conjugate())
       var apSquare = apWing.lengthSq()
       var alfa = Math.atan2(apWing.getComponent(1), apWing.getComponent(0))
@@ -384,7 +382,6 @@
       var apKite = apparentWindKite.clone().applyQuaternion(kite.getWorldQuaternion().conjugate())
 
       var DragKiteUnit = new THREE.Vector3(apKite.getComponent(0), 0, apKite.getComponent(2)).normalize()
-
       var LiftKiteUnit = new THREE.Vector3(apKite.getComponent(2), 0, -apKite.getComponent(0)).normalize()
       // var LiftKiteUnit2 = DragKiteUnit.clone().applyAxisAngle(new THREE.Vector3(0,1,0), Math.PI/2)
 
@@ -398,11 +395,15 @@
 
       document.getElementById('info').innerHTML = "alfa: " + alfa
 
+      var kiteDragWorld = wingDrag.clone().applyQuaternion(kite.getWorldQuaternion())
+      var kiteLiftWorld = wingLift.clone().applyQuaternion(kite.getWorldQuaternion())
+
+
 
       // veryfy which way the rotation goes..!
 
       // tether plus kite forces
-      FTotal[segments-1] = FSpring[segments-1].clone().add(FDrag[i]).add(thrustGlobal)
+      FTotal[segments-1] = FSpring[segments-1].clone().add(FDrag[i]).add(thrustGlobal).add(kiteDragWorld).add(kiteLiftWorld)
 
       for (var i = 0; i < segments; i++) {
         a[i] = FTotal[i].divideScalar(mass[i]).add(gravity)
