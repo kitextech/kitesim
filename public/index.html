@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SVG.js</title>
+  <!-- <script type="text/javascript" src="./js/svg.js"></script> -->
+  <script src="./js/three.js"></script>
+  <script src="./js/threeJSOrbitControl.js"></script>
+
+  <style>
+    body { margin: 0; }
+    canvas { width: 100%; height: 100% }
+
+    #info {
+    	position: absolute;
+    	top: 10px;
+    	width: 100%;
+    	text-align: center;
+    	z-index: 100;
+    	display:block;
+      color: white;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="info">Description</div>
+  <!-- <div id="drawing"></div> -->
+  <!-- <script type="text/javascript" src="./js/main.js"></script> -->
+  <script>
+
+    var Key = {
+      _pressed: {},
+
+      LEFT: 37,
+      UP: 38,
+      RIGHT: 39,
+      DOWN: 40,
+      A: 65,
+      Z: 90,
+
+      isDown: function(keyCode) {
+        return this._pressed[keyCode];
+      },
+
+      onKeydown: function(event) {
+        this._pressed[event.keyCode] = true;
+      },
+
+      onKeyup: function(event) {
+        delete this._pressed[event.keyCode];
+      }
+    };
+
+    window.addEventListener('keydown', function(e) { Key.onKeydown(e) })
+    window.addEventListener('keyup', function(e) { Key.onKeyup(e) })
+
+    // user input
+    var rotationRate = Math.PI // rad / s
+    var thrustRate = 20 // N / s
+    var thrustMax = new THREE.Vector3( 0, 0, -35) // N
+    var thrustMin = new THREE.Vector3( 0, 0, 0) // N
+    var thrust = new THREE.Vector3( 0, 0, -25) // in the frame of the kite
+
+
+    // document.onkeydown = Key.onKeydown
+    // document.onkeyup = Key.onKeyup
+
+
+  /* AWESOME
+  ALPHA_CL = [-180.0, -160.0, -90.0, -20.0, -10.0,  -5.0,  0.0, 20.0, 40.0, 90.0, 160.0, 180.0]
+  CL_LIST  = [   0.0,    0.5,   0.0,  0.08, 0.125,  0.15,  0.2,  1.0,  1.0,  0.0,  -0.5,   0.0]
+
+  ALPHA_CD = [-180.0, -170.0, -140.0, -90.0, -20.0, 0.0, 20.0, 90.0, 140.0, 170.0, 180.0]
+  CD_LIST  = [   0.5,    0.5,    0.5,   1.0,   0.2, 0.1,  0.2,  1.0,   0.5,   0.5,   0.5]
+
+  */
+
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+    //controls
+    controls = new THREE.OrbitControls(camera);
+    controls.rotateSpeed = 1.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+
+    // Helpers
+    axes = new THREE.AxisHelper(1);
+    helper = new THREE.GridHelper(10, 10);
+    // helper.geometry.rotateX( Math.PI / 2 );
+    helper.setColors(0x0000ff, 0x808080);
+    scene.add(axes);
+    scene.add(helper);
+
+    var renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+    // var geometry = new THREE.BoxGeometry( 0.02, 0.02, 0.02 )
+    // var material = new THREE.MeshBasicMaterial( { color: 0xeeeeee } )
+    // var origo = new THREE.Mesh( geometry, material )
+    // scene.add (origo)
+
+    // KITE
+    kite = new THREE.Object3D(); //create an empty container
+
+
+    // Wing
+    var wingCord = 0.1, wingTickness = 0.02, wingSpan = 1.4;
+
+    var shape = new THREE.Shape();
+    shape.moveTo( 0,0 );
+    shape.lineTo( 0, wingTickness );
+    // shape.lineTo( wingCord, wingTickness );
+    shape.lineTo( wingCord, 0 );
+    shape.lineTo( 0, 0 );
+
+    var extrudeSettings = {
+    	steps: 1,
+    	amount: wingSpan,
+    	bevelEnabled: false
+    };
+
+    var geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
+    var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
+    var wing = new THREE.Mesh( geometry, material );
+    wing.rotateZ( - Math.PI / 2 );
+    wing.rotateY( - Math.PI / 2 );
+    wing.rotateZ( - 5 / 180 * Math.PI);
+
+    wing.position.set(-wingTickness/2, -wingSpan/2, - wingCord/3)
+    kite.add( wing );//add a mesh with geometry to it
+
+
+    // VerticalWings
+    var VWingCord = 0.1, VWingTickness = 0.02, VWingSpan = 0.8;
+    var shape = new THREE.Shape();
+    shape.moveTo( 0,0 );
+    shape.lineTo( 0, VWingTickness );
+    // shape.lineTo( VWingCord, VWingTickness );
+    shape.lineTo( VWingCord, 0 );
+    shape.lineTo( 0, 0 );
+
+    var extrudeSettings = {
+    	steps: 1,
+    	amount: VWingSpan,
+    	bevelEnabled: false
+    };
+
+    var geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
+    var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
+    var VWing = new THREE.Mesh( geometry, material );
+    VWing.rotateY( - Math.PI / 2 );
+    VWing.rotateZ( - 8 / 180 * Math.PI);
+
+
+    VWing.position.set(VWingSpan/2, -wingSpan/4, - VWingCord/3)
+    var VWing2 = VWing.clone()
+    VWing2.position.set(VWingSpan/2, wingSpan/4, - VWingCord/3)
+
+    kite.add( VWing );//add a mesh with geometry to it
+    kite.add( VWing2 );//add a mesh with geometry to it
+
+
+
+    // Fuselarge
+    var fuselargeDiameter = 0.01, fuselargeFront = 0.4, fuselargeRear = 0.7;
+
+    var geometry = new THREE.CylinderGeometry( fuselargeDiameter, fuselargeDiameter, fuselargeFront + fuselargeRear, 32 );
+    var material = new THREE.MeshLambertMaterial( {color: 0xffff00} );
+    var cylinder = new THREE.Mesh( geometry, material );
+    cylinder.position.set(0,0,(fuselargeRear-fuselargeFront)/2)
+    cylinder.rotateX( Math.PI / 2 );
+    kite.add( cylinder );
+
+
+    // elevator
+    var elevatorThickness = 0.01, elevatorCord = 0.06, elevatorSpan = 0.6
+    var shape = new THREE.Shape();
+    shape.moveTo( 0, 0 );
+    shape.lineTo( 0, elevatorThickness );
+    shape.lineTo( elevatorCord, elevatorThickness/2 );
+    shape.lineTo( 0, 0 );
+
+    var extrudeSettings = {
+    	steps: 1,
+    	amount: elevatorSpan,
+    	bevelEnabled: false
+    };
+
+    var geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
+    var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
+    var wing = new THREE.Mesh( geometry, material );
+    wing.position.set(-elevatorThickness/2+0.04, -elevatorSpan/2 , fuselargeRear-elevatorCord )
+    wing.rotateZ( - Math.PI / 2 );
+    wing.rotateY( - Math.PI / 2 );
+    kite.add( wing );//add a mesh with geometry to it
+
+    // rudder
+    var rudderThickness = 0.01, rudderCord = 0.06, rudderSpan = 0.6
+    var shape = new THREE.Shape();
+    shape.moveTo( 0,0 );
+    shape.lineTo( 0, rudderThickness );
+    shape.lineTo( rudderCord, rudderThickness/2 );
+    shape.lineTo( 0, 0 );
+
+    var extrudeSettings = {
+      steps: 1,
+      amount: elevatorSpan,
+      bevelEnabled: false
+    };
+
+    var geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
+    var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
+    var wing = new THREE.Mesh( geometry, material );
+    wing.position.set(rudderSpan/2, -elevatorThickness/2 , fuselargeRear)
+    // wing.rotateZ( - Math.PI / 2 );
+    wing.rotateY( - Math.PI / 2 );
+    kite.add( wing );//add a mesh with geometry to it
+    kite.rotateX(Math.PI / 2 )
+
+    // LIGHTS
+    hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+    hemiLight.color.setHSL( 0.6, 1, 0.6 );
+    hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+    hemiLight.position.set( 0, 500, 0 );
+    scene.add( hemiLight );
+    //
+    dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
+    dirLight.color.setHSL( 0.1, 1, 0.95 );
+    dirLight.position.set( 20, 100, 0 );
+    dirLight.position.multiplyScalar( 50 );
+    scene.add( dirLight );
+
+
+
+    camera.position.x = -6;
+    camera.position.y = 6;
+    camera.position.z = 6;
+    camera.lookAt(new THREE.Vector3( 0, 0, 0 ))
+
+    // Tether
+    var segments = 8
+    var tetherLength = 100
+    var gravity = new THREE.Vector3( 0, -9.82, 0)
+    var tetherDensity = 950;
+    var tetherDiameter = 0.01
+    var k0 = 200 // spring konstant // N per e
+    var k0_negative = 20 // spring konstant // N per e
+    var d0 = 1 // damping
+    var tetherSegmentLength = 10/8 // length of tether
+    var CdTether = 0.95
+
+    // Constants
+    var rho = 1.205
+
+    var wind = new THREE.Vector3( 10, 0, 0)
+
+    function cd(angle) {
+      return 0.05
+    }
+
+    function cl(angle) {
+      return 1.2
+    }
+
+    var pos = []
+    var vel = []
+    var mass = []
+    var mesh = []
+
+    // intermetiate loop calculation varialbles
+    var segment = []
+    var segmentDir = []
+    var tetherLength = []
+    var velocityAlongLength = []
+    var velocityAlong = []
+    var velocityWithWind = []
+    var velocityPerpendicular = []
+    var tetherStretch = []
+    var FSpring = []
+    var FDrag = []
+    var FTotal = []
+    var a = []
+
+    var rotationMatrix = new THREE.Matrix4()
+
+    for (var i = 0; i < segments; i++) {
+      pos.push(new THREE.Vector3( (i+1) * tetherSegmentLength, 0, 0 ))
+      vel.push(new THREE.Vector3( 0, 0, 0 ))
+
+      var isLast = i == segments-1 ? true : false
+      var geometry, material
+      if (isLast) {
+        mass.push(1)
+        // var geometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5 )
+        // var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } )
+        mesh.push(kite)
+      } else {
+        mass.push(tetherSegmentLength * Math.PI * Math.pow(tetherDiameter/2, 2) * tetherDensity)
+        geometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 )
+        material = new THREE.MeshLambertMaterial( { color: 0xff0000 } )
+        mesh.push(new THREE.Mesh( geometry, material ))
+      }
+      scene.add( mesh[i] )
+
+      segment.push(0)
+      segmentDir.push(0)
+      tetherLength.push(0)
+      velocityAlongLength.push(0)
+      velocityWithWind.push(0)
+      velocityAlong.push(0)
+      velocityPerpendicular.push(0)
+      tetherStretch.push(0)
+      FSpring.push(0)
+      FDrag.push(0)
+      FTotal.push(0)
+      a.push(0)
+    }
+
+
+
+    function update(dt) {
+
+      dt = dt // realtime
+      dt = Math.min(dt, 0.05) // max timestep of 0.05 seconds
+
+      // var a = THREE.Vector3(0, 0, -thrustRate * dt)
+      // user input
+      if (Key.isDown(Key.UP)) kite.rotateY(-rotationRate * dt)
+      if (Key.isDown(Key.LEFT)) kite.rotateX(-rotationRate * dt)
+      if (Key.isDown(Key.DOWN)) kite.rotateY(rotationRate * dt)
+      if (Key.isDown(Key.RIGHT)) kite.rotateX(rotationRate * dt)
+      if (Key.isDown(Key.A)) thrust.add( new THREE.Vector3(0, 0, -thrustRate * dt) ).max(thrustMax).min(thrustMin)
+      if (Key.isDown(Key.Z)) thrust.add( new THREE.Vector3(0, 0, thrustRate * dt) ).max(thrustMax).min(thrustMin)
+      document.getElementById('info').innerHTML = "thrust: " + thrust.getComponent(2)
+
+
+      // Tether
+      segment[0] = pos[0].clone()
+
+      for (var i = 1; i < segments; i++) {
+        segment[i] = pos[i].clone().sub(pos[i-1])
+      }
+
+      for (var i = 0; i < segments; i++) {
+        segmentDir[i] = segment[i].clone().normalize()
+        tetherLength[i] = segment[i].length()
+        velocityAlongLength[i] = segmentDir[i].clone().dot(vel[i])
+
+        velocityWithWind[i] = wind.clone().sub(vel[i])
+        var alongLength = segmentDir[i].clone().dot(velocityWithWind[i])
+        var along = segmentDir[i].clone().multiplyScalar(alongLength)
+        var windPerpendicular = velocityWithWind[i].clone().sub( along )
+
+        velocityAlong[i] = segmentDir[i].clone().multiplyScalar(velocityAlongLength[i])
+
+        tetherStretch[i] = (tetherLength[i] - tetherSegmentLength) / tetherSegmentLength
+        var springConstant = tetherStretch[i] > 0 ? k0 : k0_negative
+        FSpring[i] = segmentDir[i].clone().multiplyScalar(- springConstant * ( tetherStretch[i] ) - d0 * velocityAlongLength[i])
+
+        FDrag[i] = windPerpendicular.multiplyScalar( 1/2 * rho * tetherDiameter * tetherSegmentLength * CdTether * windPerpendicular.length()) // temporary
+      }
+
+      for (var i = 0; i < segments-1; i++) {
+        FTotal[i] = FSpring[i].clone().sub(FSpring[i+1]).add(FDrag[i])
+      }
+
+      // KITE
+      rotationMatrix.extractRotation(kite.matrix)
+      var thrustGlobal = thrust.clone().applyMatrix4(rotationMatrix)
+
+      // tether plus kite forces
+      FTotal[segments-1] = FSpring[segments-1].clone().add(FDrag[i]).add(thrustGlobal)
+
+      for (var i = 0; i < segments; i++) {
+        a[i] = FTotal[i].divideScalar(mass[i]).add(gravity)
+        vel[i].add(a[i].multiplyScalar(dt))
+        pos[i].add(vel[i].clone().multiplyScalar(dt))
+        mesh[i].position.set(pos[i].x, pos[i].y, pos[i].z)
+      }
+    }
+
+    var lastTime, animFrame
+
+    function render(ms) {
+      // we get passed a timestamp in milliseconds
+      // we use it to determine how much time has passed since the last call
+      if (lastTime) {
+        update((ms-lastTime)/1000) // call update and pass delta time in seconds
+      }
+
+      lastTime = ms
+      animFrame = requestAnimationFrame(render)
+      renderer.render( scene, camera );
+
+    }
+
+    render()
+
+
+
+
+  </script>
+
+
+</body>
+</html>
