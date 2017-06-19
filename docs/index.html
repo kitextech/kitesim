@@ -5,6 +5,7 @@
   <!-- <script type="text/javascript" src="./js/svg.js"></script> -->
   <script src="./js/three.js"></script>
   <script src="./js/threeJSOrbitControl.js"></script>
+  <script src="./js/aeroData.js"></script>
 
   <style>
     body { margin: 0; }
@@ -62,20 +63,6 @@
     var thrust = new THREE.Vector3( 0, 0, -25) // in the frame of the kite
 
 
-    // document.onkeydown = Key.onKeydown
-    // document.onkeyup = Key.onKeyup
-
-
-  /* AWESOME
-  ALPHA_CL = [-180.0, -160.0, -90.0, -20.0, -10.0,  -5.0,  0.0, 20.0, 40.0, 90.0, 160.0, 180.0]
-  CL_LIST  = [   0.0,    0.5,   0.0,  0.08, 0.125,  0.15,  0.2,  1.0,  1.0,  0.0,  -0.5,   0.0]
-
-  ALPHA_CD = [-180.0, -170.0, -140.0, -90.0, -20.0, 0.0, 20.0, 90.0, 140.0, 170.0, 180.0]
-  CD_LIST  = [   0.5,    0.5,    0.5,   1.0,   0.2, 0.1,  0.2,  1.0,   0.5,   0.5,   0.5]
-
-  */
-
-
     var scene = new THREE.Scene();
     var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
 
@@ -107,7 +94,8 @@
 
 
     // Wing
-    var wingCord = 0.1, wingTickness = 0.02, wingSpan = 1.4;
+    var wingCord = 0.1, wingTickness = 0.02, wingSpan = 1.4
+    var wingArea = wingCord * wingSpan
 
     var shape = new THREE.Shape();
     shape.moveTo( 0,0 );
@@ -138,7 +126,6 @@
     var shape = new THREE.Shape();
     shape.moveTo( 0,0 );
     shape.lineTo( 0, VWingTickness );
-    // shape.lineTo( VWingCord, VWingTickness );
     shape.lineTo( VWingCord, 0 );
     shape.lineTo( 0, 0 );
 
@@ -191,11 +178,11 @@
 
     var geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
     var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
-    var wing = new THREE.Mesh( geometry, material );
-    wing.position.set(-elevatorThickness/2+0.04, -elevatorSpan/2 , fuselargeRear-elevatorCord )
-    wing.rotateZ( - Math.PI / 2 );
-    wing.rotateY( - Math.PI / 2 );
-    kite.add( wing );//add a mesh with geometry to it
+    var elevator = new THREE.Mesh( geometry, material );
+    elevator.position.set(-elevatorThickness/2+0.04, -elevatorSpan/2 , fuselargeRear-elevatorCord )
+    elevator.rotateZ( - Math.PI / 2 );
+    elevator.rotateY( - Math.PI / 2 );
+    kite.add( elevator );//add a mesh with geometry to it
 
     // rudder
     var rudderThickness = 0.01, rudderCord = 0.06, rudderSpan = 0.6
@@ -213,11 +200,11 @@
 
     var geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
     var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
-    var wing = new THREE.Mesh( geometry, material );
-    wing.position.set(rudderSpan/2, -elevatorThickness/2 , fuselargeRear)
-    // wing.rotateZ( - Math.PI / 2 );
-    wing.rotateY( - Math.PI / 2 );
-    kite.add( wing );//add a mesh with geometry to it
+    var rudder = new THREE.Mesh( geometry, material );
+    rudder.position.set(rudderSpan/2, -elevatorThickness/2 , fuselargeRear)
+    rudder.rotateY( - Math.PI / 2 );
+    kite.add( rudder );//add a mesh with geometry to it
+
     kite.rotateX(Math.PI / 2 )
 
     // LIGHTS
@@ -234,11 +221,10 @@
     scene.add( dirLight );
 
 
-
     camera.position.x = -6;
     camera.position.y = 6;
     camera.position.z = 6;
-    camera.lookAt(new THREE.Vector3( 0, 0, 0 ))
+    camera.lookAt(new THREE.Vector3( 0, 5, 0 ))
 
     // Tether
     var segments = 8
@@ -257,12 +243,12 @@
 
     var wind = new THREE.Vector3( 10, 0, 0)
 
-    function cd(angle) {
-      return 0.05
+    function cdWing(angle) {
+      return cdProcessed[ Math.round( (angle*180/Math.PI + 360) % 360)  ]
     }
 
-    function cl(angle) {
-      return 1.2
+    function clWing(angle) {
+      return clProcessed[ Math.round( (angle*180/Math.PI + 360) % 360)  ]
     }
 
     var pos = []
@@ -276,7 +262,7 @@
     var tetherLength = []
     var velocityAlongLength = []
     var velocityAlong = []
-    var velocityWithWind = []
+    var apparentWind = []
     var velocityPerpendicular = []
     var tetherStretch = []
     var FSpring = []
@@ -296,6 +282,7 @@
         mass.push(1)
         // var geometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5 )
         // var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } )
+        // mesh.push(new THREE.Mesh( geometry, material ))
         mesh.push(kite)
       } else {
         mass.push(tetherSegmentLength * Math.PI * Math.pow(tetherDiameter/2, 2) * tetherDensity)
@@ -309,7 +296,7 @@
       segmentDir.push(0)
       tetherLength.push(0)
       velocityAlongLength.push(0)
-      velocityWithWind.push(0)
+      apparentWind.push(0)
       velocityAlong.push(0)
       velocityPerpendicular.push(0)
       tetherStretch.push(0)
@@ -319,6 +306,19 @@
       a.push(0)
     }
 
+    // scene.add(kite)
+
+    // helper arrows
+    var dir = new THREE.Vector3( 1, 0, 0 );
+    var origin = new THREE.Vector3( 0, 0, 0 );
+    var length = 1;
+    var hex = 0xffff00;
+
+    var arrowHelperLift = new THREE.ArrowHelper( dir, origin, length, hex );
+    var arrowHelperDrag = new THREE.ArrowHelper( dir, origin, length, 0xff0000 );
+
+    kite.add( arrowHelperLift )
+    kite.add( arrowHelperDrag )
 
 
     function update(dt) {
@@ -349,10 +349,10 @@
         tetherLength[i] = segment[i].length()
         velocityAlongLength[i] = segmentDir[i].clone().dot(vel[i])
 
-        velocityWithWind[i] = wind.clone().sub(vel[i])
-        var alongLength = segmentDir[i].clone().dot(velocityWithWind[i])
+        apparentWind[i] = wind.clone().sub(vel[i])
+        var alongLength = segmentDir[i].clone().dot(apparentWind[i])
         var along = segmentDir[i].clone().multiplyScalar(alongLength)
-        var windPerpendicular = velocityWithWind[i].clone().sub( along )
+        var windPerpendicular = apparentWind[i].clone().sub( along )
 
         velocityAlong[i] = segmentDir[i].clone().multiplyScalar(velocityAlongLength[i])
 
@@ -370,6 +370,36 @@
       // KITE
       rotationMatrix.extractRotation(kite.matrix)
       var thrustGlobal = thrust.clone().applyMatrix4(rotationMatrix)
+
+      var apparentWindKite = apparentWind[segments-1]
+      // calculate lift, drag for wing, VerticalWings, elevator, rudder
+      // ap = apparent wind
+
+
+
+      var apWing = apparentWindKite.clone().applyQuaternion(wing.getWorldQuaternion().conjugate())
+      var apSquare = apWing.lengthSq()
+      var alfa = Math.atan2(apWing.getComponent(1), apWing.getComponent(0))
+
+      var apKite = apparentWindKite.clone().applyQuaternion(kite.getWorldQuaternion().conjugate())
+
+      var DragKiteUnit = new THREE.Vector3(apKite.getComponent(0), 0, apKite.getComponent(2)).normalize()
+
+      var LiftKiteUnit = new THREE.Vector3(apKite.getComponent(2), 0, -apKite.getComponent(0)).normalize()
+      // var LiftKiteUnit2 = DragKiteUnit.clone().applyAxisAngle(new THREE.Vector3(0,1,0), Math.PI/2)
+
+      var wingLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apSquare * wingArea * clWing(alfa) )
+      var wingDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apSquare * wingArea * cdWing(alfa) )
+
+      arrowHelperLift.setDirection(wingLift.clone().normalize())
+      arrowHelperDrag.setDirection(wingDrag.clone().normalize())
+      arrowHelperDrag.setLength(wingDrag.length())
+      arrowHelperLift.setLength(wingLift.length())
+
+      document.getElementById('info').innerHTML = "alfa: " + alfa
+
+
+      // veryfy which way the rotation goes..!
 
       // tether plus kite forces
       FTotal[segments-1] = FSpring[segments-1].clone().add(FDrag[i]).add(thrustGlobal)
