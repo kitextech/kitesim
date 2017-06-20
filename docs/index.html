@@ -75,8 +75,8 @@
     controls.panSpeed = 0.8;
 
     // Helpers
-    axes = new THREE.AxisHelper(1);
-    helper = new THREE.GridHelper(10, 10);
+    axes = new THREE.AxisHelper(10);
+    helper = new THREE.GridHelper(100, 100);
     // helper.geometry.rotateX( Math.PI / 2 );
     helper.setColors(0x0000ff, 0x808080);
     scene.add(axes);
@@ -209,7 +209,10 @@
     rudder.rotateY( - Math.PI / 2 );
     kite.add( rudder );//add a mesh with geometry to it
 
+    kite.applyMatrix(new THREE.Matrix4().makeScale(10,10,10)) // = new THREE.Vector3( 100, 100, 100 )
     kite.rotateX(Math.PI / 2 )
+
+
 
     // LIGHTS
     hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
@@ -231,21 +234,22 @@
     camera.lookAt(new THREE.Vector3( 0, 5, 0 ))
 
     // Tether
-    var segments = 8
+    var segments = 10
     var tetherLength = 100
     var gravity = new THREE.Vector3( 0, -9.82, 0)
     var tetherDensity = 950;
-    var tetherDiameter = 0.01
+    var tetherDiameter = 0.002
     var k0 = 200 // spring konstant // N per e
     var k0_negative = 20 // spring konstant // N per e
     var d0 = 1 // damping
-    var tetherSegmentLength = 10/8 // length of tether
+    var tetherSegmentLength = tetherLength/segments // length of tether
     var CdTether = 0.95
+    var massKite = 1.5
 
     // Constants
     var rho = 1.205
 
-    var wind = new THREE.Vector3( 10, 0, 0)
+    var wind = new THREE.Vector3( 0, 0, 0)
 
     function cdWing(angle) {
       return cdProcessed[ Math.round( (angle*180/Math.PI + 360) % 360)  ]
@@ -283,14 +287,14 @@
       var isLast = i == segments-1 ? true : false
       var geometry, material
       if (isLast) {
-        mass.push(1)
+        mass.push(massKite)
         // var geometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5 )
         // var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } )
         // mesh.push(new THREE.Mesh( geometry, material ))
         mesh.push(kite)
       } else {
         mass.push(tetherSegmentLength * Math.PI * Math.pow(tetherDiameter/2, 2) * tetherDensity)
-        geometry = new THREE.BoxGeometry( 0.2, 0.2, 0.2 )
+        geometry = new THREE.BoxGeometry( 1.0, 1.0, 1.0 )
         material = new THREE.MeshLambertMaterial( { color: 0xff0000 } )
         mesh.push(new THREE.Mesh( geometry, material ))
       }
@@ -380,7 +384,7 @@
 
       // KITE
       rotationMatrix.extractRotation(kite.matrix)
-      var thrustGlobal = thrust.clone().applyMatrix4(rotationMatrix)
+      var thrustWorld = thrust.clone().applyMatrix4(rotationMatrix)
 
       var apparentWindKite = apparentWind[segments-1]
       // calculate lift, drag for wing, VerticalWings, elevator, rudder
@@ -399,17 +403,35 @@
       var apWingSquare = apWing.lengthSq()
       var alfa = Math.atan2(apWing.getComponent(1), apWing.getComponent(0))
 
+      var wingLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * clWing(alfa) )
+      var wingDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * cdWing(alfa) )
+
+      var kiteDragWorld = wingDrag.clone().applyQuaternion(kite.getWorldQuaternion())
+      var kiteLiftWorld = wingLift.clone().applyQuaternion(kite.getWorldQuaternion())
+
+
       // vertical wing
       var apVWing = apparentWindKite.clone().applyQuaternion(VWing.getWorldQuaternion().conjugate()).setComponent(2, 0)
       var apVWingSquare = apVWing.lengthSq()
       var alfaVWing = Math.atan2(apVWing.getComponent(1), apVWing.getComponent(0))
 
-
-      var wingLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * clWing(alfa) )
-      var wingDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * cdWing(alfa) )
-
       var wingSideLift = LiftSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * clWing(alfaVWing) )
       var wingSideDrag = DragSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * cdWing(alfaVWing) )
+
+      var kiteDragSideWorld = wingSideDrag.clone().applyQuaternion(kite.getWorldQuaternion())
+      var kiteLiftSideWorld = wingSideLift.clone().applyQuaternion(kite.getWorldQuaternion())
+
+
+      // tether plus kite forces
+      FTotal[segments-1] = FSpring[segments-1].clone().add(FDrag[i]).add(thrustWorld)
+        .add(kiteDragWorld).add(kiteLiftWorld).add(kiteDragSideWorld).add(kiteLiftSideWorld)
+
+      for (var i = 0; i < segments; i++) {
+        a[i] = FTotal[i].divideScalar(mass[i]).add(gravity)
+        vel[i].add(a[i].multiplyScalar(dt))
+        pos[i].add(vel[i].clone().multiplyScalar(dt))
+        mesh[i].position.set(pos[i].x, pos[i].y, pos[i].z)
+      }
 
       arrowHelperLift.setDirection(wingLift.clone().normalize())
       arrowHelperDrag.setDirection(wingDrag.clone().normalize())
@@ -421,25 +443,7 @@
       arrowHelperDragSide.setLength(wingSideDrag.length())
       arrowHelperLiftSide.setLength(wingSideLift.length())
 
-      document.getElementById('info').innerHTML = "alfa: " + alfa
-
-      var kiteDragWorld = wingDrag.clone().applyQuaternion(kite.getWorldQuaternion())
-      var kiteLiftWorld = wingLift.clone().applyQuaternion(kite.getWorldQuaternion())
-      var kiteDragSideWorld = wingSideDrag.clone().applyQuaternion(kite.getWorldQuaternion())
-      var kiteLiftSideWorld = wingSideLift.clone().applyQuaternion(kite.getWorldQuaternion())
-
-
-
-      // tether plus kite forces
-      FTotal[segments-1] = FSpring[segments-1].clone().add(FDrag[i]).add(thrustGlobal)
-        .add(kiteDragWorld).add(kiteLiftWorld).add(kiteDragSideWorld).add(kiteLiftSideWorld)
-
-      for (var i = 0; i < segments; i++) {
-        a[i] = FTotal[i].divideScalar(mass[i]).add(gravity)
-        vel[i].add(a[i].multiplyScalar(dt))
-        pos[i].add(vel[i].clone().multiplyScalar(dt))
-        mesh[i].position.set(pos[i].x, pos[i].y, pos[i].z)
-      }
+      document.getElementById('info').innerHTML = "alfa: " + alfaVWing
     }
 
     var lastTime, animFrame
