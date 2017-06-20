@@ -629,9 +629,39 @@ function precalculate(data) {
     var ratio = (i - data[index-1][0]) / (data[index][0] - data[index-1][0])
     result.push( data[index-1][1] * (1-ratio) + data[index][1] * ratio )
   }
+  result.push(result[0])
+  result.push(result[1])
 
   return result
 }
 
 var cdProcessed = precalculate(Cd_raw)
 var clProcessed = precalculate(Cl_raw)
+
+
+function cdWing(angle) {
+
+  angle = angle*180/Math.PI
+
+  if (angle < 0) {
+    angle += Math.PI*2
+  }
+
+  var angleInt = Math.floor(angle)
+  var remainder = angle - angleInt
+
+  return cdProcessed[angleInt] * (1-remainder) + cdProcessed[angleInt+1] * remainder
+}
+
+function clWing(angle) {
+  angle = angle*180/Math.PI
+
+  if (angle < 0) {
+    angle += 360
+  }
+
+  var angleInt = Math.floor(angle)
+  var remainder = angle - angleInt
+
+  return clProcessed[angleInt] * (1-remainder) + clProcessed[angleInt+1] * remainder
+}
