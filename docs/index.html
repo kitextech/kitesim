@@ -248,10 +248,15 @@
     var CdTether = 0.95
     var massKite = 1.5
 
+    var IkiteX = 1
+    var IkiteY = 1
+    var IkiteZ = 1
+
+
     // Constants
     var rho = 1.205
 
-    var wind = new THREE.Vector3( 0, 0, 0)
+    var wind = new THREE.Vector3( 20, 0, 0)
 
     var pos = []
     var vel = []
@@ -399,8 +404,8 @@
       var apWingSquare = apWing.lengthSq()
       var alfa = Math.atan2(apWing.y, apWing.x)
 
-      var wingLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * clWing(alfa) )
-      var wingDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * cdWing(alfa) )
+      var wingLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * clAsym(alfa) )
+      var wingDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * cdAsym(alfa) )
 
       var wingDragWorld = wingDrag.clone().applyQuaternion(kite.getWorldQuaternion())
       var wingLiftWorld = wingLift.clone().applyQuaternion(kite.getWorldQuaternion())
@@ -411,8 +416,8 @@
       var apVWingSquare = apVWing.lengthSq()
       var alfaVWing = Math.atan2(apVWing.getComponent(1), apVWing.getComponent(0))
 
-      var wingSideLift = LiftSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * clWing(alfaVWing) )
-      var wingSideDrag = DragSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * cdWing(alfaVWing) )
+      var wingSideLift = LiftSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * clAsym(alfaVWing) )
+      var wingSideDrag = DragSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * cdAsym(alfaVWing) )
 
       var vwDragWorld = wingSideDrag.clone().applyQuaternion(kite.getWorldQuaternion())
       var vwLiftWorld = wingSideLift.clone().applyQuaternion(kite.getWorldQuaternion())
@@ -423,12 +428,12 @@
       var apElevatorSquare = apElevator.lengthSq()
       var alfaElevator = Math.atan2(apElevator.getComponent(1), apElevator.getComponent(0))
 
-      var elevatorLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * clWing(alfaElevator) )
-      var elevatorDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdWing(alfaElevator) )
+      var elevatorLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
+      var elevatorDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
 
       var elevatorTotal = elevatorLift.clone().add(elevatorDrag)
 
-      var elevatorPitchingForce = elevatorTotal.x
+      var elevatorPitchingMoment = elevatorTotal.x * (fuselargeRear-elevatorCord)
 
       var elevatorDragWorld = elevatorDrag.clone().applyQuaternion(kite.getWorldQuaternion())
       var elevatorLiftWorld = elevatorLift.clone().applyQuaternion(kite.getWorldQuaternion())
@@ -452,7 +457,6 @@
       arrowHelperDrag.setDirection( wingDrag.clone().normalize() )
       arrowHelperLiftSide.setDirection( wingSideLift.clone().normalize() )
       arrowHelperDragSide.setDirection( wingSideDrag.clone().normalize() )
-
       arrowHelperElevator.setDirection( elevatorTotal.clone().normalize() )
 
       arrowHelperDrag.setLength( wingDrag.length() )

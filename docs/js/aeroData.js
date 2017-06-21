@@ -1,6 +1,6 @@
 // DU 96-W-180, 700,000 Reynolds number, Delft University of Technology
 
-Cd_raw = [
+var DU96W180_Cd_raw = [
   [-1.3146817681126564, 0.011223861570027083],
   [0.7284361602103075, 0.012815132382558048],
   [2.7715540885332643, 0.014406403195089013],
@@ -262,7 +262,7 @@ Cd_raw = [
   [360.21012868440937, 0.008361432350292297]
 ]
 
-var Cl_raw = [
+var DU96W180_Cl_raw = [
   [-0.31274575901286994, 0.2391162656123953],
   [0.0834253716444806, 0.2831393303367187],
   [0.35415931882491947, 0.32860116073196455],
@@ -613,15 +613,76 @@ var Cl_raw = [
   [359.9783964466171, 0.27077907447566174]
 ]
 
+var NACA0012_Cd_raw = [
+  [-0.08735199169829855, 0.0034763560754136336],
+  [0.9617005441756721, 0.0034662283082602663],
+  [4.45854233042224, 0.0034324690844154127],
+  [10.228883701391993, 0.017278814744341453],
+  [11.629484845752959, 0.0641847243348379],
+  [12.506802675418491, 0.14237530666226794],
+  [14.606219753365856, 0.17537241602872644],
+  [16.618491998488512, 0.21532139356541524],
+  [24.493498472203306, 0.39423430819485983],
+  [28.345686779619406, 0.5366931689361436],
+  [38.32494403833206, 0.8702461162506545],
+  [45.41654470507673, 1.1343166730284904],
+  [55.30527353602935, 1.3896714421902066],
+  [65.1921379371196, 1.5981067980718882],
+  [75.33822714203235, 1.7300783559257988],
+  [85.39434034284794, 1.7977537840061848],
+  [95.35999416886135, 1.7889687899811832],
+  [105.32336924726522, 1.7228378463916953],
+  [110.0407911167206, 1.6393799811638878],
+  [120.34977624923516, 1.4707180548549026],
+  [130.39428855312954, 1.2464504669706276],
+  [140.3497915943369, 0.9822153339765491],
+  [145.58614644214228, 0.7579941650250608],
+  [155.45091389671595, 0.41034758573596064],
+  [165.4968763127255, 0.2225728748472684],
+  [175.54297683465077, 0.038273676053393046],
+  [180.96218391488074, 0.015630520640121492]
+]
 
+var NACA0012_Cl_raw = [
+  [-0.03908691904269901, 0.0021065699802813587],
+  [0.3152221834716311, 0.05605616935032831],
+  [1.737433292316199, 0.2588835003630128],
+  [5.715849943080501, 0.6410860109627624],
+  [9.19229579716916, 0.8654642284501008],
+  [11.441807210681128, 0.8667381724781592],
+  [13.949845034184607, 0.6828173289727951],
+  [15.855707414012072, 0.6023465312004426],
+  [20.509498647750526, 0.690239018045347],
+  [27.09750014805651, 0.8681906616919681],
+  [35.373345879751795, 1.0452447538642753],
+  [45.10132987648797, 1.1026494438558743],
+  [54.89824898499036, 0.9803122127977858],
+  [66.41996723015879, 0.7607209365067877],
+  [76.64865860800559, 0.49035526982476696],
+  [88.97067165013918, 0.1396249673727319],
+  [102.52467279510952, -0.24562246247589958],
+  [112.65892385947136, -0.5141882006637315],
+  [124.46964841513731, -0.7540033384001563],
+  [135.2933295606341, -0.8646386214732389],
+  [144.00165823292912, -0.8374659744202217],
+  [153.22332844198493, -0.6821171861805144],
+  [160.21467536142242, -0.5780735983435217],
+  [164.71938355848894, -0.590349786250266],
+  [168.6922727661563, -0.6826238684644017],
+  [170.6066632010476, -0.7853307801810456],
+  [171.91177147970973, -0.7660575512111021],
+  [174.84573827556937, -0.5938820856007911],
+  [176.91481815370244, -0.36659406414027407],
+  [180.2378379801144, 0.01338386995593388]
+]
 // precalculate a value for each angle (360 degrees)
 
-function precalculate(data) {
+function precalculate(data, indexLimit = 360) {
   var result = []
 
   var index = 1
 
-  for (var i = 0; i < 360; i++) {
+  for (var i = 0; i < indexLimit; i++) {
     while (i > data[index][0]) {
       index += 1
     }
@@ -635,33 +696,56 @@ function precalculate(data) {
   return result
 }
 
-var cdProcessed = precalculate(Cd_raw)
-var clProcessed = precalculate(Cl_raw)
+var DU96W180_Cl_Processed = precalculate(DU96W180_Cl_raw)
+var DU96W180_Cd_Processed = precalculate(DU96W180_Cd_raw)
 
+var NACA0012_Cl_Processed = precalculate(NACA0012_Cl_raw, 180)
+var NACA0012_Cd_Processed = precalculate(NACA0012_Cd_raw, 180)
 
-function cdWing(angle) {
-
-  angle = angle*180/Math.PI
-
-  if (angle < 0) {
-    angle += Math.PI*2
-  }
-
-  var angleInt = Math.floor(angle)
-  var remainder = angle - angleInt
-
-  return cdProcessed[angleInt] * (1-remainder) + cdProcessed[angleInt+1] * remainder
-}
-
-function clWing(angle) {
+function angleDegreeAsym(angle) {
   angle = angle*180/Math.PI
 
   if (angle < 0) {
     angle += 360
   }
 
-  var angleInt = Math.floor(angle)
-  var remainder = angle - angleInt
+  return angle
+}
 
-  return clProcessed[angleInt] * (1-remainder) + clProcessed[angleInt+1] * remainder
+function angleDegreeSym(angle) {
+  return Math.abs(angle*180/Math.PI)
+}
+
+function getLinearRatio(dataset, index, ratio) {
+  return dataset[index] * (1-ratio) + dataset[index+1] * ratio
+}
+
+function clAsym(angle) {
+  angle = angleDegreeAsym(angle)
+  var angleInt = Math.floor(angle)
+  // var remainder = angle - angleInt
+  // return clProcessed[angleInt] * (1-remainder) + clProcessed[angleInt+1] * remainder
+  return getLinearRatio(DU96W180_Cl_Processed, angleInt, angle - angleInt)
+}
+
+function cdAsym(angle) {
+  var angle = angleDegreeAsym(angle)
+
+  var angleInt = Math.floor(angle)
+  // var remainder = angle - angleInt
+  // return cdProcessed[angleInt] * (1-remainder) + cdProcessed[angleInt+1] * remainder
+  return getLinearRatio(DU96W180_Cd_Processed, angleInt, angle - angleInt)
+
+}
+
+function clSym(angle) {
+  var angle = angleDegreeSym(angle)
+  var angleInt = Math.floor(angle)
+  return getLinearRatio(NACA0012_Cl_Processed, angleInt, angle - angleInt)
+}
+
+function cdSym(angle) {
+  var angle = angleDegreeSym(angle)
+  var angleInt = Math.floor(angle)
+  return getLinearRatio(NACA0012_Cd_Processed, angleInt, angle - angleInt)
 }
