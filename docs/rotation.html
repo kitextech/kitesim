@@ -105,98 +105,30 @@
     camera.position.x = -6;
     camera.position.y = 6;
     camera.position.z = 6;
-    camera.lookAt(new THREE.Vector3( 0, 5, 0 ))
+    camera.lookAt(new THREE.Vector3( 0, 0, 0 ))
 
     //* KITE THREE JS Definition is define in plane.js
 
     kite.applyMatrix(new THREE.Matrix4().makeScale(10,10,10)) // = new THREE.Vector3( 100, 100, 100 )
     kite.rotateX(Math.PI / 2 )
 
-    // Tether
-    var segments = 10
-    var tetherLength = 200
-    var gravity = new THREE.Vector3( 0, -9.82, 0)
-    var tetherDensity = 950;
-    var tetherDiameter = 0.002
-    var k0 = 200 // spring konstant // N per e
-    var k0_negative = 20 // spring konstant // N per e
-    var d0 = 1 // damping
-    var tetherSegmentLength = tetherLength/segments // length of tether
-    var CdTether = 0.95
-    var massKite = 1.5
+    var JkiteX = 1
+    var JkiteY = 1
+    var JkiteZ = 1
 
-    var IkiteX = 1
-    var IkiteY = 1
-    var IkiteZ = 1
+    // var J =
 
 
     // Constants
     var rho = 1.205
-
     var wind = new THREE.Vector3( 20, 0, 0)
 
-    var pos = []
-    var vel = []
-    var mass = []
-    var mesh = []
-
-    // intermetiate loop calculation varialbles
-    var segment = []
-    var segmentDir = []
-    var tetherLength = []
-    var velocityAlongLength = []
-    var velocityAlong = []
-    var apparentWind = []
-    var velocityPerpendicular = []
-    var tetherStretch = []
-    var FSpring = []
-    var FDrag = []
-    var FTotal = []
-    var a = []
-
-    var rotationMatrix = new THREE.Matrix4()
-
-    for (var i = 0; i < segments; i++) {
-      pos.push(new THREE.Vector3( (i+1) * tetherSegmentLength, 0, 0 ))
-      vel.push(new THREE.Vector3( 0, 0, 0 ))
-
-      var isLast = i == segments-1 ? true : false
-      var geometry, material
-      if (isLast) {
-        mass.push(massKite)
-        // var geometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5 )
-        // var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } )
-        // mesh.push(new THREE.Mesh( geometry, material ))
-        mesh.push(kite)
-      } else {
-        mass.push(tetherSegmentLength * Math.PI * Math.pow(tetherDiameter/2, 2) * tetherDensity)
-        geometry = new THREE.BoxGeometry( 1.0, 1.0, 1.0 )
-        material = new THREE.MeshLambertMaterial( { color: 0xff0000 } )
-        mesh.push(new THREE.Mesh( geometry, material ))
-      }
-      scene.add( mesh[i] )
-
-      segment.push(0)
-      segmentDir.push(0)
-      tetherLength.push(0)
-      velocityAlongLength.push(0)
-      apparentWind.push(0)
-      velocityAlong.push(0)
-      velocityPerpendicular.push(0)
-      tetherStretch.push(0)
-      FSpring.push(0)
-      FDrag.push(0)
-      FTotal.push(0)
-      a.push(0)
-    }
-
-    // scene.add(kite)
+    scene.add( kite )
 
     // helper arrows
     var dir = new THREE.Vector3( 1, 0, 0 );
     var origin = new THREE.Vector3( 0, 0, 0 );
     var length = 1;
-    var hex = 0xffff00;
 
     var arrowHelperLift = new THREE.ArrowHelper( dir, origin, length, 0xffff00 )
     var arrowHelperDrag = new THREE.ArrowHelper( dir, origin, length, 0xff0000 )
@@ -230,41 +162,10 @@
       document.getElementById('info').innerHTML = "thrust: " + thrust.getComponent(2)
 
 
-      // Tether
-      segment[0] = pos[0].clone()
-
-      for (var i = 1; i < segments; i++) {
-        segment[i] = pos[i].clone().sub(pos[i-1])
-      }
-
-      for (var i = 0; i < segments; i++) {
-        segmentDir[i] = segment[i].clone().normalize()
-        tetherLength[i] = segment[i].length()
-        velocityAlongLength[i] = segmentDir[i].clone().dot(vel[i])
-
-        apparentWind[i] = wind.clone().sub(vel[i])
-        var alongLength = segmentDir[i].clone().dot(apparentWind[i])
-        var along = segmentDir[i].clone().multiplyScalar(alongLength)
-        var windPerpendicular = apparentWind[i].clone().sub( along )
-
-        velocityAlong[i] = segmentDir[i].clone().multiplyScalar(velocityAlongLength[i])
-
-        tetherStretch[i] = (tetherLength[i] - tetherSegmentLength) / tetherSegmentLength
-        var springConstant = tetherStretch[i] > 0 ? k0 : k0_negative
-        FSpring[i] = segmentDir[i].clone().multiplyScalar(- springConstant * ( tetherStretch[i] ) - d0 * velocityAlongLength[i])
-
-        FDrag[i] = windPerpendicular.multiplyScalar( 1/2 * rho * tetherDiameter * tetherSegmentLength * CdTether * windPerpendicular.length()) // temporary
-      }
-
-      for (var i = 0; i < segments-1; i++) {
-        FTotal[i] = FSpring[i].clone().sub(FSpring[i+1]).add(FDrag[i])
-      }
-
       // KITE
-      rotationMatrix.extractRotation(kite.matrix)
-      var thrustWorld = thrust.clone().applyMatrix4(rotationMatrix)
+      var thrustWorld = thrust.clone().applyQuaternion(kite.getWorldQuaternion())
 
-      var apparentWindKite = apparentWind[segments-1]
+      var apparentWindKite = wind
       // calculate lift, drag for wing, VerticalWings, elevator, rudder
       // ap = apparent wind
 
@@ -315,20 +216,6 @@
       var elevatorDragWorld = elevatorDrag.clone().applyQuaternion(kite.getWorldQuaternion())
       var elevatorLiftWorld = elevatorLift.clone().applyQuaternion(kite.getWorldQuaternion())
 
-
-
-
-
-      // tether plus kite forces
-      FTotal[segments-1] = FSpring[segments-1].clone().add(FDrag[i]).add(thrustWorld)
-        .add(wingDragWorld).add(wingLiftWorld).add(vwDragWorld).add(vwLiftWorld)
-
-      for (var i = 0; i < segments; i++) {
-        a[i] = FTotal[i].divideScalar(mass[i]).add(gravity)
-        vel[i].add(a[i].multiplyScalar(dt))
-        pos[i].add(vel[i].clone().multiplyScalar(dt))
-        mesh[i].position.set(pos[i].x, pos[i].y, pos[i].z)
-      }
 
       arrowHelperLift.setDirection( wingLift.clone().normalize() )
       arrowHelperDrag.setDirection( wingDrag.clone().normalize() )
