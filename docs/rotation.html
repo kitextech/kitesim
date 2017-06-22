@@ -121,9 +121,9 @@
     //        21, 22, 23,
     //        31, 32, 33 );
 
-    J.set( 1, 0, 0,
-          0, 1, 0,
-          0, 0, 1 );
+    J.set( JkiteX, 0, 0,
+          0, JkiteY, 0,
+          0, 0, JkiteZ );
 
     var Jinv = new THREE.Matrix3().getInverse ( J, function() {
       alert('No Inverse')
@@ -183,90 +183,86 @@
       // KITE
       var thrustWorld = thrust.clone().applyQuaternion(kite.getWorldQuaternion())
 
-      var apparentWindKite = wind
+      var apKiteWorld = wind // subtract kite velocity
       // calculate lift, drag for wing, VerticalWings, elevator, rudder
       // ap = apparent wind
 
-      var apKite = apparentWindKite.clone().applyQuaternion(kite.getWorldQuaternion().conjugate())
+      var apKiteKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate())
 
-      var DragKiteUnit = new THREE.Vector3(apKite.x, 0, apKite.z).normalize()
-      var DragSideKiteUnit = new THREE.Vector3(0, apKite.y, apKite.z).normalize()
+      var dragKiteUnit = new THREE.Vector3(apKiteKite.x, 0, apKiteKite.z).normalize()
+      var dragSideKiteUnit = new THREE.Vector3(0, apKiteKite.y, apKiteKite.z).normalize()
 
-      var LiftKiteUnit = new THREE.Vector3( apKite.z, 0, -apKite.x ).normalize()
-      var LiftSideKiteUnit = new THREE.Vector3( 0, apKite.z, -apKite.y ).normalize()
+      var liftKiteUnit = new THREE.Vector3( apKiteKite.z, 0, -apKiteKite.x ).normalize()
+      var liftSideKiteUnit = new THREE.Vector3( 0, apKiteKite.z, -apKiteKite.y ).normalize()
 
       // main wing
-      var apWing = apparentWindKite.clone().applyQuaternion(wing.getWorldQuaternion().conjugate()).setComponent(2,0)
+      var apWing = apKiteWorld.clone().applyQuaternion(wing.getWorldQuaternion().conjugate()).setComponent(2,0)
       var apWingSquare = apWing.lengthSq()
-      var alfa = Math.atan2(apWing.y, apWing.x)
+      var alfaWing = Math.atan2(apWing.y, apWing.x)
 
-      var wingLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * clAsym(alfa) )
-      var wingDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * cdAsym(alfa) )
+      var wingLift = liftKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * clAsym(alfaWing) )
+      var wingDrag = dragKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * cdAsym(alfaWing) )
 
-      var wingDragWorld = wingDrag.clone().applyQuaternion(kite.getWorldQuaternion())
-      var wingLiftWorld = wingLift.clone().applyQuaternion(kite.getWorldQuaternion())
+      // var wingDragWorld = wingDrag.clone().applyQuaternion(kite.getWorldQuaternion())
+      // var wingLiftWorld = wingLift.clone().applyQuaternion(kite.getWorldQuaternion())
 
 
       // vertical wing
-      var apVWing = apparentWindKite.clone().applyQuaternion(VWing.getWorldQuaternion().conjugate()).setComponent(2, 0)
+      var apVWing = apKiteWorld.clone().applyQuaternion(VWing.getWorldQuaternion().conjugate()).setComponent(2, 0)
       var apVWingSquare = apVWing.lengthSq()
-      var alfaVWing = Math.atan2(apVWing.getComponent(1), apVWing.getComponent(0))
+      var alfaVWing = Math.atan2(apVWing.y, apVWing.x)
 
-      var wingSideLift = LiftSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * clAsym(alfaVWing) )
-      var wingSideDrag = DragSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * cdAsym(alfaVWing) )
+      var wingSideLift = liftSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * clAsym(alfaVWing) )
+      var wingSideDrag = dragSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * cdAsym(alfaVWing) )
 
-      var vwDragWorld = wingSideDrag.clone().applyQuaternion(kite.getWorldQuaternion())
-      var vwLiftWorld = wingSideLift.clone().applyQuaternion(kite.getWorldQuaternion())
-
+      // var vwDragWorld = wingSideDrag.clone().applyQuaternion(kite.getWorldQuaternion())
+      // var vwLiftWorld = wingSideLift.clone().applyQuaternion(kite.getWorldQuaternion())
 
       // elevator
-      var velocityElevatorKite = elevatorPositionKite.clone().cross(angularVelocity).multiplyScalar(-1)
+      var velElevatorKite = elevatorPositionKite.clone().cross(angularVelocity).multiplyScalar(-1)
+      var apElevatorKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velElevatorKite)
+      var dragElevatorKiteUnit = new THREE.Vector3( apElevatorKite.x, 0, apElevatorKite.z ).normalize()
+      var liftElevatorKiteUnit = new THREE.Vector3( apElevatorKite.z, 0, -apElevatorKite.x ).normalize()
 
-      var apparentWindElevatorKite = apparentWindKite.clone().add(velocityElevatorKite)
-      var apElevator = apparentWindElevatorKite.applyQuaternion(elevator.getWorldQuaternion().conjugate()).setComponent(2,0)
+
+      var apElevator = apElevatorKite.clone().applyQuaternion(elevator.quaternion.clone().conjugate()).setComponent(2,0)
       var apElevatorSquare = apElevator.lengthSq()
-      var alfaElevator = Math.atan2(apElevator.getComponent(1), apElevator.getComponent(0))
+      var alfaElevator = Math.atan2(apElevator.y, apElevator.x)
 
-      var elevatorDragUnitKite = apElevator.clone().setComponent(1,0)
 
-      var elevatorLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * clSym(alfaElevator) )
-      var elevatorDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
+      var liftElevatorKite = liftElevatorKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * clSym(alfaElevator) )
+      var dragElevatorKite = dragElevatorKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
 
-      var elevatorTotal = elevatorLift.clone().add(elevatorDrag)
+      var totalForceElevator = liftElevatorKite.clone().add(dragElevatorKite)
 
-      var elevatorDragWorld = elevatorDrag.clone().applyQuaternion(kite.getWorldQuaternion())
-      var elevatorLiftWorld = elevatorLift.clone().applyQuaternion(kite.getWorldQuaternion())
+      // var elevatorDragWorld = dragElevatorKite.clone().applyQuaternion(kite.getWorldQuaternion())
+      // var elevatorLiftWorld = liftElevatorKite.clone().applyQuaternion(kite.getWorldQuaternion())
 
       arrowHelperLift.setDirection( wingLift.clone().normalize() )
       arrowHelperDrag.setDirection( wingDrag.clone().normalize() )
       arrowHelperLiftSide.setDirection( wingSideLift.clone().normalize() )
       arrowHelperDragSide.setDirection( wingSideDrag.clone().normalize() )
-      arrowHelperElevator.setDirection( velocityElevatorKite.clone().normalize() )
+      arrowHelperElevator.setDirection( apElevatorKite.clone().normalize() )
       // arrowHelperElevator.setDirection( elevatorTotal.clone().normalize() )
-
 
       arrowHelperDrag.setLength( wingDrag.length() )
       arrowHelperLift.setLength( wingLift.length() )
       arrowHelperDragSide.setLength( wingSideDrag.length() )
       arrowHelperLiftSide.setLength( wingSideLift.length() )
-      arrowHelperElevator.setLength( velocityElevatorKite.length() )
+      arrowHelperElevator.setLength( apElevatorKite.length() )
       // arrowHelperElevator.setLength( elevatorTotal.length() )
 
-
-
-      // document.getElementById('info').innerHTML = "apparent wind speed : " + apparentWindKite.length()
-      document.getElementById('info').innerHTML = "alfa wing: " + Math.round(alfa * 180 / Math.PI) + "<br />"
+      // document.getElementById('info').innerHTML = "apparent wind speed : " + apKiteWorld.length()
+      document.getElementById('info').innerHTML = "alfa wing: " + Math.round(alfaWing * 180 / Math.PI) + "<br />"
       document.getElementById('info').innerHTML += "alfa vertical wing : " + Math.round(alfaVWing * 180 / Math.PI)
 
-      var Moment = elevatorPositionKite.clone().cross(elevatorTotal)
+      var Moment = elevatorPositionKite.clone().cross(totalForceElevator)
 
       var angularAcceleration = Moment.applyMatrix3(Jinv)
 
       angularVelocity.add(angularAcceleration.multiplyScalar(dt))
 
       kite.rotateOnAxis( angularVelocity.clone().normalize(), angularVelocity.length() * dt )
-
-
     }
 
     var lastTime, animFrame
