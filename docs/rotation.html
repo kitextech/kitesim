@@ -112,9 +112,9 @@
     kite.applyMatrix(new THREE.Matrix4().makeScale(10,10,10)) // = new THREE.Vector3( 100, 100, 100 )
     kite.rotateX(Math.PI / 2 )
 
-    var JkiteX = 1
-    var JkiteY = 1
-    var JkiteZ = 1
+    var JkiteX = 0.15
+    var JkiteY = 0.05
+    var JkiteZ = 0.15
 
     var J = new THREE.Matrix3()
     // J.set( 11, 12, 13,
@@ -139,6 +139,7 @@
     scene.add( kite )
 
     var elevatorPositionKite = new THREE.Vector3(0, 0, fuselargeRear-elevatorCord)
+    var rudderPositionKite = new THREE.Vector3(0, 0, fuselargeRear)
 
     // helper arrows
     var dir = new THREE.Vector3( 1, 0, 0 );
@@ -149,7 +150,7 @@
     var arrowHelperDrag = new THREE.ArrowHelper( dir, origin, length, 0xff0000 )
     var arrowHelperLiftSide = new THREE.ArrowHelper( dir, origin, length, 0xff5500 )
     var arrowHelperDragSide = new THREE.ArrowHelper( dir, origin, length, 0xff0000 )
-    var arrowHelperElevator = new THREE.ArrowHelper( dir, new THREE.Vector3(0,0,fuselargeRear-elevatorCord), length, 0x0000ff )
+    var arrowHelperElevator = new THREE.ArrowHelper( dir, elevatorPositionKite, length, 0x0000ff )
 
     kite.add( arrowHelperLift )
     kite.add( arrowHelperDrag )
@@ -169,10 +170,10 @@
       // user input
       // if (Key.isDown(Key.UP)) kite.rotateY(-rotationRate * dt)
       if (Key.isDown(Key.UP)) elevator.rotateZ(-rotationRate * dt)
-      if (Key.isDown(Key.LEFT)) kite.rotateX(-rotationRate * dt)
+      if (Key.isDown(Key.LEFT)) rudder.rotateZ(-rotationRate * dt)
       // if (Key.isDown(Key.DOWN)) kite.rotateY(rotationRate * dt)
       if (Key.isDown(Key.DOWN)) elevator.rotateZ(rotationRate * dt)
-      if (Key.isDown(Key.RIGHT)) kite.rotateX(rotationRate * dt)
+      if (Key.isDown(Key.RIGHT)) rudder.rotateZ(rotationRate * dt)
       if (Key.isDown(Key.S)) kite.rotateZ(-rotationRate/4 * dt)
       if (Key.isDown(Key.X)) kite.rotateZ(rotationRate/4 * dt)
       if (Key.isDown(Key.A)) thrust.add( new THREE.Vector3(0, 0, -thrustRate * dt) ).max(thrustMax).min(thrustMin)
@@ -224,7 +225,6 @@
       var dragElevatorKiteUnit = new THREE.Vector3( apElevatorKite.x, 0, apElevatorKite.z ).normalize()
       var liftElevatorKiteUnit = new THREE.Vector3( apElevatorKite.z, 0, -apElevatorKite.x ).normalize()
 
-
       var apElevator = apElevatorKite.clone().applyQuaternion(elevator.quaternion.clone().conjugate()).setComponent(2,0)
       var apElevatorSquare = apElevator.lengthSq()
       var alfaElevator = Math.atan2(apElevator.y, apElevator.x)
@@ -234,6 +234,22 @@
       var dragElevatorKite = dragElevatorKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
 
       var totalForceElevator = liftElevatorKite.clone().add(dragElevatorKite)
+
+      // rudder
+      var velRudderKite = rudderPositionKite.clone().cross(angularVelocity).multiplyScalar(-1)
+      var apRudderKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velRudderKite)
+      var dragRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.y, apRudderKite.z ).normalize()
+      var liftRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.z, -apRudderKite.y ).normalize()
+
+      var apRudder = apRudderKite.clone().applyQuaternion(rudder.quaternion.clone().conjugate()).setComponent(2,0)
+      var apRudderSquare = apRudder.lengthSq()
+      var alfaRudder = Math.atan2(apRudder.y, apRudder.x)
+
+
+      var liftRudderKite = liftRudderKiteUnit.clone().multiplyScalar( 1/2 * rho * apRudderSquare * rudderArea * clSym(alfaRudder) )
+      var dragRudderKite = dragRudderKiteUnit.clone().multiplyScalar( 1/2 * rho * apRudderSquare * rudderArea * cdSym(alfaRudder) )
+
+      var totalForceRudder = liftRudderKite.clone().add(dragRudderKite)
 
       // var elevatorDragWorld = dragElevatorKite.clone().applyQuaternion(kite.getWorldQuaternion())
       // var elevatorLiftWorld = liftElevatorKite.clone().applyQuaternion(kite.getWorldQuaternion())
@@ -256,9 +272,10 @@
       document.getElementById('info').innerHTML = "alfa wing: " + Math.round(alfaWing * 180 / Math.PI) + "<br />"
       document.getElementById('info').innerHTML += "alfa vertical wing : " + Math.round(alfaVWing * 180 / Math.PI)
 
-      var Moment = elevatorPositionKite.clone().cross(totalForceElevator)
+      var momentElevator = elevatorPositionKite.clone().cross(totalForceElevator)
+      var momentRudder = rudderPositionKite.clone().cross(totalForceRudder)
 
-      var angularAcceleration = Moment.applyMatrix3(Jinv)
+      var angularAcceleration = momentElevator.clone().add(momentRudder).applyMatrix3(Jinv)
 
       angularVelocity.add(angularAcceleration.multiplyScalar(dt))
 
