@@ -116,14 +116,29 @@
     var JkiteY = 1
     var JkiteZ = 1
 
-    // var J =
+    var J = new THREE.Matrix3()
+    // J.set( 11, 12, 13,
+    //        21, 22, 23,
+    //        31, 32, 33 );
 
+    J.set( 1, 0, 0,
+          0, 1, 0,
+          0, 0, 1 );
+
+    var Jinv = new THREE.Matrix3().getInverse ( J, function() {
+      alert('No Inverse')
+    } )
+
+
+    var angularVelocity = new THREE.Vector3( 0, 0, 0 )
 
     // Constants
     var rho = 1.205
-    var wind = new THREE.Vector3( 20, 0, 0)
+    var wind = new THREE.Vector3( 10, 0, 0)
 
     scene.add( kite )
+
+    var elevatorPositionKite = new THREE.Vector3(0, 0, fuselargeRear-elevatorCord)
 
     // helper arrows
     var dir = new THREE.Vector3( 1, 0, 0 );
@@ -148,12 +163,15 @@
 
       dt = dt // realtime
       dt = Math.min(dt, 0.05) // max timestep of 0.05 seconds
+      // var rotation = new THREE.Quaternion().setFromAxisAngle(  )
 
       // var a = THREE.Vector3(0, 0, -thrustRate * dt)
       // user input
-      if (Key.isDown(Key.UP)) kite.rotateY(-rotationRate * dt)
+      // if (Key.isDown(Key.UP)) kite.rotateY(-rotationRate * dt)
+      if (Key.isDown(Key.UP)) elevator.rotateZ(-rotationRate * dt)
       if (Key.isDown(Key.LEFT)) kite.rotateX(-rotationRate * dt)
-      if (Key.isDown(Key.DOWN)) kite.rotateY(rotationRate * dt)
+      // if (Key.isDown(Key.DOWN)) kite.rotateY(rotationRate * dt)
+      if (Key.isDown(Key.DOWN)) elevator.rotateZ(rotationRate * dt)
       if (Key.isDown(Key.RIGHT)) kite.rotateX(rotationRate * dt)
       if (Key.isDown(Key.S)) kite.rotateZ(-rotationRate/4 * dt)
       if (Key.isDown(Key.X)) kite.rotateZ(rotationRate/4 * dt)
@@ -202,37 +220,51 @@
 
 
       // elevator
-      var apElevator = apparentWindKite.clone().applyQuaternion(elevator.getWorldQuaternion().conjugate()).setComponent(2,0)
+      var velocityElevatorKite = elevatorPositionKite.clone().cross(angularVelocity).multiplyScalar(-1)
+
+      var apparentWindElevatorKite = apparentWindKite.clone().add(velocityElevatorKite)
+      var apElevator = apparentWindElevatorKite.applyQuaternion(elevator.getWorldQuaternion().conjugate()).setComponent(2,0)
       var apElevatorSquare = apElevator.lengthSq()
       var alfaElevator = Math.atan2(apElevator.getComponent(1), apElevator.getComponent(0))
 
-      var elevatorLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
+      var elevatorDragUnitKite = apElevator.clone().setComponent(1,0)
+
+      var elevatorLift = LiftKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * clSym(alfaElevator) )
       var elevatorDrag = DragKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
 
       var elevatorTotal = elevatorLift.clone().add(elevatorDrag)
 
-      var elevatorPitchingMoment = elevatorTotal.x * (fuselargeRear-elevatorCord)
-
       var elevatorDragWorld = elevatorDrag.clone().applyQuaternion(kite.getWorldQuaternion())
       var elevatorLiftWorld = elevatorLift.clone().applyQuaternion(kite.getWorldQuaternion())
-
 
       arrowHelperLift.setDirection( wingLift.clone().normalize() )
       arrowHelperDrag.setDirection( wingDrag.clone().normalize() )
       arrowHelperLiftSide.setDirection( wingSideLift.clone().normalize() )
       arrowHelperDragSide.setDirection( wingSideDrag.clone().normalize() )
-      arrowHelperElevator.setDirection( elevatorTotal.clone().normalize() )
+      arrowHelperElevator.setDirection( velocityElevatorKite.clone().normalize() )
+      // arrowHelperElevator.setDirection( elevatorTotal.clone().normalize() )
+
 
       arrowHelperDrag.setLength( wingDrag.length() )
       arrowHelperLift.setLength( wingLift.length() )
       arrowHelperDragSide.setLength( wingSideDrag.length() )
       arrowHelperLiftSide.setLength( wingSideLift.length() )
-      arrowHelperElevator.setLength( elevatorTotal.length() )
+      arrowHelperElevator.setLength( velocityElevatorKite.length() )
+      // arrowHelperElevator.setLength( elevatorTotal.length() )
+
 
 
       // document.getElementById('info').innerHTML = "apparent wind speed : " + apparentWindKite.length()
       document.getElementById('info').innerHTML = "alfa wing: " + Math.round(alfa * 180 / Math.PI) + "<br />"
       document.getElementById('info').innerHTML += "alfa vertical wing : " + Math.round(alfaVWing * 180 / Math.PI)
+
+      var Moment = elevatorPositionKite.clone().cross(elevatorTotal)
+
+      var angularAcceleration = Moment.applyMatrix3(Jinv)
+
+      angularVelocity.add(angularAcceleration.multiplyScalar(dt))
+
+      kite.rotateOnAxis( angularVelocity.clone().normalize(), angularVelocity.length() * dt )
 
 
     }

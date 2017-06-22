@@ -739,9 +739,10 @@ function cdAsym(angle) {
 }
 
 function clSym(angle) {
+  var sign = Math.sign(angle)
   var angle = angleDegreeSym(angle)
   var angleInt = Math.floor(angle)
-  return getLinearRatio(NACA0012_Cl_Processed, angleInt, angle - angleInt)
+  return sign * getLinearRatio(NACA0012_Cl_Processed, angleInt, angle - angleInt)
 }
 
 function cdSym(angle) {
