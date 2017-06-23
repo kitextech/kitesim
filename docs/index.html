@@ -76,6 +76,10 @@
     controls.zoomSpeed = 1.2;
     controls.panSpeed = 0.8;
 
+    // kite.add(camera)
+    // camera.position.add(new THREE.Vector3(10,0,0))
+    // camera.lookAt(new THREE.Vector3(0,0,0))
+
     // Helpers
     axes = new THREE.AxisHelper(10);
     helper = new THREE.GridHelper(100, 100);
@@ -83,6 +87,8 @@
     helper.setColors(0x0000ff, 0x808080);
     scene.add(axes);
     scene.add(helper);
+
+    kite.add(axes)
 
     var renderer = new THREE.WebGLRenderer();
     renderer.setSize( window.innerWidth, window.innerHeight );
@@ -109,21 +115,23 @@
 
     //* KITE THREE JS Definition is define in plane.js
 
-    kite.applyMatrix(new THREE.Matrix4().makeScale(10,10,10)) // = new THREE.Vector3( 100, 100, 100 )
+    // kite.applyMatrix(new THREE.Matrix4().makeScale(10,10,10)) // = new THREE.Vector3( 100, 100, 100 )
     kite.rotateX(Math.PI / 2 )
 
     // Tether
     var segments = 10
-    var tetherLength = 200
+    var totalTetherLength = 70
     var gravity = new THREE.Vector3( 0, -9.82, 0)
     var tetherDensity = 950;
     var tetherDiameter = 0.002
-    var k0 = 200 // spring konstant // N per e
-    var k0_negative = 20 // spring konstant // N per e
+    var k0 = 2000 // spring konstant // N per e
+    var k0_negative = 0 // spring konstant // N per e
     var d0 = 1 // damping
-    var tetherSegmentLength = tetherLength/segments // length of tether
+    var tetherSegmentLength = totalTetherLength/segments // length of tether
     var CdTether = 0.95
     var massKite = 1.5
+
+    var kiteTetherLength = 3 // meter
 
     // Moment of Inertia kite
     var JkiteX = 0.15
@@ -134,7 +142,6 @@
     // J.set( 11, 12, 13,
     //        21, 22, 23,
     //        31, 32, 33 );
-
     J.set( JkiteX, 0, 0,
           0, JkiteY, 0,
           0, 0, JkiteZ );
@@ -142,17 +149,45 @@
     var Jinv = new THREE.Matrix3().getInverse ( J, function() {
       alert('No Inverse')
     } )
-
-    var angularVelocity = new THREE.Vector3( 0, 0, 0 )
+    var angularVelocityKite = new THREE.Vector3( 0, 0, 0 )
+    var velocityKite = new THREE.Vector3( 0, 0, 0)
 
     var elevatorPositionKite = new THREE.Vector3(0, 0, fuselargeRear-elevatorCord)
     var rudderPositionKite = new THREE.Vector3(0, 0, fuselargeRear)
+    var tetherAttachmentPoint1 = new THREE.Vector3(0, wingSpan/2, 0)
+    var tetherAttachmentPoint2 = new THREE.Vector3(0, -wingSpan/2, 0)
 
+    // helper arrows
+    var dir = new THREE.Vector3( 1, 0, 0 );
+    var origin = new THREE.Vector3( 0, 0, 0 );
+    var length = 1;
+    var hex = 0xffff00;
+
+    // var arrowHelperLift = new THREE.ArrowHelper( dir, origin, length, 0xffff00 )
+    // var arrowHelperDrag = new THREE.ArrowHelper( dir, origin, length, 0xff0000 )
+    // var arrowHelperLiftSide = new THREE.ArrowHelper( dir, origin, length, 0xff5500 )
+    // var arrowHelperDragSide = new THREE.ArrowHelper( dir, origin, length, 0xff0000 )
+    var arrowHelperElevator = new THREE.ArrowHelper( dir, elevatorPositionKite, length, 0x0000ff )
+    var arrowHelperRudder = new THREE.ArrowHelper( dir, rudderPositionKite, length, 0x00ffff )
+    var arrowHelperTAP1 = new THREE.ArrowHelper( dir, tetherAttachmentPoint1, length, 0xff00ff )
+    var arrowHelperTAP2 = new THREE.ArrowHelper( dir, tetherAttachmentPoint2, length, 0x0000ff )
+
+
+
+
+    // kite.add( arrowHelperLift )
+    // kite.add( arrowHelperDrag )
+    // kite.add( arrowHelperLiftSide )
+    // kite.add( arrowHelperDragSide )
+    kite.add( arrowHelperElevator )
+    kite.add( arrowHelperRudder )
+    kite.add( arrowHelperTAP1 )
+    kite.add( arrowHelperTAP2 )
 
     // Constants
     var rho = 1.205
 
-    var wind = new THREE.Vector3( 20, 0, 0)
+    var wind = new THREE.Vector3( 0.1, 0, 0)
 
     var pos = []
     var vel = []
@@ -162,10 +197,11 @@
     // intermetiate loop calculation varialbles
     var segment = []
     var segmentDir = []
-    var tetherLength = []
-    var velocityAlongLength = []
+    var tSegmentLength = []
+    var tSegmentLengthDefault = []
+    var tSegmentStretchVelocity = []
     var velocityAlong = []
-    var apparentWind = []
+    var ap = []
     var velocityPerpendicular = []
     var tetherStretch = []
     var FSpring = []
@@ -173,33 +209,12 @@
     var FTotal = []
     var a = []
 
-    var rotationMatrix = new THREE.Matrix4()
-
-    for (var i = 0; i < segments; i++) {
-      pos.push(new THREE.Vector3( (i+1) * tetherSegmentLength, 0, 0 ))
-      vel.push(new THREE.Vector3( 0, 0, 0 ))
-
-      var isLast = i == segments-1 ? true : false
-      var geometry, material
-      if (isLast) {
-        mass.push(massKite)
-        // var geometry = new THREE.BoxGeometry( 0.5, 0.5, 0.5 )
-        // var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } )
-        // mesh.push(new THREE.Mesh( geometry, material ))
-        mesh.push(kite)
-      } else {
-        mass.push(tetherSegmentLength * Math.PI * Math.pow(tetherDiameter/2, 2) * tetherDensity)
-        geometry = new THREE.BoxGeometry( 1.0, 1.0, 1.0 )
-        material = new THREE.MeshLambertMaterial( { color: 0xff0000 } )
-        mesh.push(new THREE.Mesh( geometry, material ))
-      }
-      scene.add( mesh[i] )
-
+    function addRowToArray() {
       segment.push(0)
       segmentDir.push(0)
-      tetherLength.push(0)
-      velocityAlongLength.push(0)
-      apparentWind.push(0)
+      tSegmentLength.push(0)
+      tSegmentStretchVelocity.push(0)
+      ap.push(0)
       velocityAlong.push(0)
       velocityPerpendicular.push(0)
       tetherStretch.push(0)
@@ -209,33 +224,62 @@
       a.push(0)
     }
 
-    // scene.add(kite)
+    // default tether box
+    var geometry, material
+    geometry = new THREE.BoxGeometry( 1, 1, 1 )
+    material = new THREE.MeshLambertMaterial( { color: 0xff0000 } )
 
-    // helper arrows
-    var dir = new THREE.Vector3( 1, 0, 0 );
-    var origin = new THREE.Vector3( 0, 0, 0 );
-    var length = 1;
-    var hex = 0xffff00;
+    // main tether
+    for (var i = 0; i < segments; i++) {
+      tSegmentLengthDefault.push(tetherSegmentLength)
+      pos.push(new THREE.Vector3( (i+1) * tetherSegmentLength, 0, 0 ))
+      vel.push(new THREE.Vector3( 0, 0, 0 ))
 
-    var arrowHelperLift = new THREE.ArrowHelper( dir, origin, length, 0xffff00 )
-    var arrowHelperDrag = new THREE.ArrowHelper( dir, origin, length, 0xff0000 )
-    var arrowHelperLiftSide = new THREE.ArrowHelper( dir, origin, length, 0xff5500 )
-    var arrowHelperDragSide = new THREE.ArrowHelper( dir, origin, length, 0xff0000 )
-    var arrowHelperElevator = new THREE.ArrowHelper( dir, elevatorPositionKite, length, 0x0000ff )
+      mass.push(tetherSegmentLength * Math.PI * Math.pow(tetherDiameter/2, 2) * tetherDensity)
 
-    kite.add( arrowHelperLift )
-    kite.add( arrowHelperDrag )
-    kite.add( arrowHelperLiftSide )
-    kite.add( arrowHelperDragSide )
-    kite.add( arrowHelperElevator )
+      mesh.push(new THREE.Mesh( geometry, material ))
+      scene.add( mesh[i] )
 
+      addRowToArray()
+    }
 
 
-    function update(dt) {
+    // kiteTether
+      // tSegmentLength
+      // kiteTetherLength
+      // tetherAttachmentPoint1
 
-      dt = dt // realtime
-      dt = Math.min(dt, 0.05) // max timestep of 0.05 seconds
+    var dx = Math.sqrt(kiteTetherLength*kiteTetherLength-tetherAttachmentPoint1.y*tetherAttachmentPoint1.y)
 
+    tSegmentLengthDefault.push(kiteTetherLength)
+    tSegmentLengthDefault.push(kiteTetherLength)
+
+    // NOTE THIS POSITION AND VELOCITIES WILL BE RECALCULATED ON EVERY FRAME BASED ON KITE POSITION AND ORIENTATION
+    pos.push() // new THREE.Vector3( tSegmentLength + dx, tetherAttachmentPoint1.y, 0 ))
+    pos.push() // new THREE.Vector3( tSegmentLength + dx, tetherAttachmentPoint2.y, 0 ))
+    vel.push() // new THREE.Vector3( 0, 0, 0 ))
+    vel.push() // new THREE.Vector3( 0, 0, 0 ))
+
+    mass.push(kiteTetherLength * Math.PI * Math.pow(tetherDiameter/2, 2) * tetherDensity)
+    mass.push(kiteTetherLength * Math.PI * Math.pow(tetherDiameter/2, 2) * tetherDensity)
+
+    addRowToArray()
+    addRowToArray()
+
+    var TIndexEnd = segments-1
+    var KTIndex1 = segments
+    var KTIndex2 = segments+1
+
+    kite.position.add( new THREE.Vector3(totalTetherLength + dx, 0, 0) )
+
+
+    // kite
+
+    // mass.push(massKite)
+    // mesh.push(kite)
+    scene.add(kite)
+
+    function detectUserInput(dt) {
       // var a = THREE.Vector3(0, 0, -thrustRate * dt)
       // user input
       if (Key.isDown(Key.UP)) elevator.rotateZ(-rotationRate * dt)
@@ -247,40 +291,79 @@
       if (Key.isDown(Key.X)) kite.rotateZ(rotationRate/4 * dt)
       if (Key.isDown(Key.A)) thrust.add( new THREE.Vector3(0, 0, -thrustRate * dt) ).max(thrustMax).min(thrustMin)
       if (Key.isDown(Key.Z)) thrust.add( new THREE.Vector3(0, 0, thrustRate * dt) ).max(thrustMax).min(thrustMin)
-      document.getElementById('info').innerHTML = "thrust: " + thrust.getComponent(2)
+    }
 
+
+    function update(dt) {
+
+      dt = dt/2 // realtime
+      dt = Math.min(dt, 0.05) // max timestep of 0.05 seconds
+
+      detectUserInput(dt)
 
       // Tether
-      segment[0] = pos[0].clone()
+      // vectors describing each part of the tether
 
-      for (var i = 1; i < segments; i++) {
+      segment[0] = pos[0].clone()
+      segmentDir[0] = segment[0].clone().normalize()
+
+      for (var i = 1; i <= TIndexEnd; i++) {
         segment[i] = pos[i].clone().sub(pos[i-1])
+        segmentDir[i] = segment[i].clone().normalize()
+        tSegmentStretchVelocity[i] = segmentDir[i].dot( vel[i].clone().sub(vel[i-1]) ) / tSegmentLengthDefault[i]
       }
 
-      for (var i = 0; i < segments; i++) {
-        segmentDir[i] = segment[i].clone().normalize()
-        tetherLength[i] = segment[i].length()
-        velocityAlongLength[i] = segmentDir[i].clone().dot(vel[i])
+      pos[KTIndex1] = kite.position.clone().add(tetherAttachmentPoint1.clone().applyQuaternion(kite.quaternion))
+      pos[KTIndex2] = kite.position.clone().add(tetherAttachmentPoint2.clone().applyQuaternion(kite.quaternion))
+      vel[KTIndex1] = velocityKite.clone().add(tetherAttachmentPoint1.clone().cross(angularVelocityKite).multiplyScalar(-1).applyQuaternion(kite.quaternion))
+      vel[KTIndex2] = velocityKite.clone().add(tetherAttachmentPoint2.clone().cross(angularVelocityKite).multiplyScalar(-1).applyQuaternion(kite.quaternion))
 
-        apparentWind[i] = wind.clone().sub(vel[i])
-        var alongLength = segmentDir[i].clone().dot(apparentWind[i])
+      segment[KTIndex1] = pos[KTIndex1].clone().sub(pos[TIndexEnd])
+      segment[KTIndex2] = pos[KTIndex2].clone().sub(pos[TIndexEnd])
+      segmentDir[KTIndex1] = segment[KTIndex1].clone().normalize()
+      segmentDir[KTIndex2] = segment[KTIndex2].clone().normalize()
+      tSegmentStretchVelocity[KTIndex1] = segmentDir[KTIndex1].dot( vel[KTIndex1].clone().sub(vel[TIndexEnd]) ) / tSegmentLengthDefault[KTIndex1]
+      tSegmentStretchVelocity[KTIndex2] = segmentDir[KTIndex2].dot( vel[KTIndex1].clone().sub(vel[TIndexEnd]) ) / tSegmentLengthDefault[KTIndex2]
+
+
+      for (var i = 0; i <= KTIndex2; i++) { // calculate forces for main and kite tethers
+
+        tSegmentLength[i] = segment[i].length()
+        // tSegmentStretchVelocity[i] = segmentDir[i].clone().dot(vel[i])
+
+        ap[i] = wind.clone().sub(vel[i])
+        var alongLength = segmentDir[i].clone().dot(ap[i])
         var along = segmentDir[i].clone().multiplyScalar(alongLength)
-        var windPerpendicular = apparentWind[i].clone().sub( along )
+        var windPerpendicular = ap[i].clone().sub( along )
 
-        velocityAlong[i] = segmentDir[i].clone().multiplyScalar(velocityAlongLength[i])
+        velocityAlong[i] = segmentDir[i].clone().multiplyScalar(tSegmentStretchVelocity[i])
 
-        tetherStretch[i] = (tetherLength[i] - tetherSegmentLength) / tetherSegmentLength
-        var springConstant = tetherStretch[i] > 0 ? k0 : k0_negative
-        FSpring[i] = segmentDir[i].clone().multiplyScalar(- springConstant * ( tetherStretch[i] ) - d0 * velocityAlongLength[i])
+        tetherStretch[i] = (tSegmentLength[i] - tSegmentLengthDefault[i]) / tSegmentLengthDefault[i]
+        var springConstant = tetherStretch[i] > 0 ? k0 : 0// k0_negative
+        FSpring[i] = segmentDir[i].clone().multiplyScalar(- springConstant * ( tetherStretch[i] ) - d0 * tSegmentStretchVelocity[i] )
 
         FDrag[i] = windPerpendicular.multiplyScalar( 1/2 * rho * tetherDiameter * tetherSegmentLength * CdTether * windPerpendicular.length()) // temporary
       }
 
-      for (var i = 0; i < segments-1; i++) {
+      for (var i = 0; i < TIndexEnd; i++) {
         FTotal[i] = FSpring[i].clone().sub(FSpring[i+1]).add(FDrag[i])
       }
 
-      var apKiteWorld = apparentWind[segments-1]
+      FTotal[TIndexEnd] = FSpring[TIndexEnd].clone().sub(FSpring[KTIndex1]).sub(FSpring[KTIndex2]).add(FDrag[TIndexEnd])
+
+      for (var i = 0; i <= TIndexEnd; i++) {
+        a[i] = FTotal[i].divideScalar(mass[i]).add(gravity)
+        vel[i].add(a[i].multiplyScalar(dt))
+        pos[i].add(vel[i].clone().multiplyScalar(dt))
+        mesh[i].position.set(pos[i].x, pos[i].y, pos[i].z)
+      }
+
+
+
+
+
+
+      var apKiteWorld = wind.clone().sub(velocityKite)
       var thrustWorld = thrust.clone().applyQuaternion(kite.getWorldQuaternion())
 
       var apKiteKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate())
@@ -305,7 +388,7 @@
       var vwingDrag = dragSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * cdAsym(alfaVWing) )
 
       // elevator
-      var velElevatorKite = elevatorPositionKite.clone().cross(angularVelocity).multiplyScalar(-1)
+      var velElevatorKite = elevatorPositionKite.clone().cross(angularVelocityKite).multiplyScalar(-1)
       var apElevatorKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velElevatorKite)
       var dragElevatorKiteUnit = new THREE.Vector3( apElevatorKite.x, 0, apElevatorKite.z ).normalize()
       var liftElevatorKiteUnit = new THREE.Vector3( apElevatorKite.z, 0, -apElevatorKite.x ).normalize()
@@ -319,7 +402,7 @@
       var totalForceElevatorKite = liftElevatorKite.clone().add(dragElevatorKite)
 
       // rudder
-      var velRudderKite = rudderPositionKite.clone().cross(angularVelocity).multiplyScalar(-1)
+      var velRudderKite = rudderPositionKite.clone().cross(angularVelocityKite).multiplyScalar(-1)
       var apRudderKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velRudderKite)
       var dragRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.y, apRudderKite.z ).normalize()
       var liftRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.z, -apRudderKite.y ).normalize()
@@ -336,40 +419,69 @@
       var aeroForcesKite = wingLift.clone().add(wingDrag).add(vwingLift).add(vwingDrag).add(totalForceElevatorKite).add(totalForceRudderKite)
 
       // moments and rotation of kite
-      var aeroMomentsKite = elevatorPositionKite.clone().cross(totalForceElevatorKite).add(rudderPositionKite.clone().cross(totalForceRudderKite))
-      var angularAcceleration = aeroMomentsKite.clone().applyMatrix3(Jinv)
-      angularVelocity.add(angularAcceleration.multiplyScalar(dt))
+      var tap1SpringForceKite = FSpring[KTIndex1].clone().applyQuaternion( kite.quaternion.clone().conjugate() )
+      var tap2SpringForceKite = FSpring[KTIndex2].clone().applyQuaternion( kite.quaternion.clone().conjugate() )
 
-      kite.rotateOnAxis( angularVelocity.clone().normalize(), angularVelocity.length() * dt )
+      // var momentsKite = new THREE.Vector3()
+        // tetherAttachmentPoint1.clone().cross( tap1SpringForceKite )
+        // .add(tetherAttachmentPoint2.clone().cross( tap2SpringForceKite ) )
+        // .setComponent(0,0).setComponent(1,0)
+
+        //elevatorPositionKite.clone().cross(totalForceElevatorKite)
+        //.add(rudderPositionKite.clone().cross(totalForceRudderKite))
+        // .add(tetherAttachmentPoint1.clone().cross( tap1SpringForceKite ) )
+        // .add(tetherAttachmentPoint2.clone().cross( tap2SpringForceKite ) )
+
+      // var angularAcceleration = momentsKite.clone().applyMatrix3(Jinv)
+      // angularVelocityKite.add(angularAcceleration.multiplyScalar(dt))
+
+      // kite.rotateOnAxis( angularVelocityKite.clone().normalize(), angularVelocityKite.length() * dt )
 
       // tether plus kite forces
-      FTotal[segments-1] = FSpring[segments-1].clone().add(FDrag[i]).add(thrustWorld)
+      FKite = FSpring[KTIndex1].clone()
+        .add(FSpring[KTIndex2])
+        .add(FDrag[KTIndex1])
+        .add(FDrag[KTIndex2])
+        .add(thrustWorld)
         .add(aeroForcesKite.clone().applyQuaternion(kite.quaternion))
 
-      for (var i = 0; i < segments; i++) {
-        a[i] = FTotal[i].divideScalar(mass[i]).add(gravity)
-        vel[i].add(a[i].multiplyScalar(dt))
-        pos[i].add(vel[i].clone().multiplyScalar(dt))
-        mesh[i].position.set(pos[i].x, pos[i].y, pos[i].z)
-      }
 
-      arrowHelperLift.setDirection( wingLift.clone().normalize() )
-      arrowHelperDrag.setDirection( wingDrag.clone().normalize() )
-      arrowHelperLiftSide.setDirection( vwingLift.clone().normalize() )
-      arrowHelperDragSide.setDirection( vwingDrag.clone().normalize() )
+
+      var accelerationKite = FKite.divideScalar(massKite).add(gravity)
+      velocityKite.add(accelerationKite.multiplyScalar(dt))
+      kite.position.add(velocityKite.clone().multiplyScalar(dt))
+
+      // arrowHelperLift.setDirection( wingLift.clone().normalize() )
+      // arrowHelperDrag.setDirection( wingDrag.clone().normalize() )
+      // arrowHelperLiftSide.setDirection( vwingLift.clone().normalize() )
+      // arrowHelperDragSide.setDirection( vwingDrag.clone().normalize() )
+      //
+      // arrowHelperDrag.setLength( wingDrag.length() )
+      // arrowHelperLift.setLength( wingLift.length() )
+      // arrowHelperDragSide.setLength( vwingDrag.length() )
+      // arrowHelperLiftSide.setLength( vwingLift.length() )
+
       arrowHelperElevator.setDirection( totalForceElevatorKite.clone().normalize() )
-
-      arrowHelperDrag.setLength( wingDrag.length() )
-      arrowHelperLift.setLength( wingLift.length() )
-      arrowHelperDragSide.setLength( vwingDrag.length() )
-      arrowHelperLiftSide.setLength( vwingLift.length() )
       arrowHelperElevator.setLength( totalForceElevatorKite.length() )
 
+      arrowHelperRudder.setDirection( totalForceRudderKite.clone().normalize() )
+      arrowHelperRudder.setLength( totalForceRudderKite.length() )
 
-      // document.getElementById('info').innerHTML = "apparent wind speed : " + apparentWindKite.length()
+      arrowHelperTAP1.setDirection( tap1SpringForceKite.clone().normalize() )
+      arrowHelperTAP1.setLength( tap1SpringForceKite.length() )
+
+      arrowHelperTAP2.setDirection( tap2SpringForceKite.clone().normalize() )
+      arrowHelperTAP2.setLength( tap2SpringForceKite.length() )
+
+
+      // document.getElementById('info').innerHTML = "apparent wind speed : " + apKite.length()
       document.getElementById('info').innerHTML = "alfa wing: " + Math.round(alfaWing * 180 / Math.PI) + "<br />"
-      document.getElementById('info').innerHTML += "alfa vertical wing : " + Math.round(alfaVWing * 180 / Math.PI)
-
+      document.getElementById('info').innerHTML += "alfa vertical wing : " + Math.round(alfaVWing * 180 / Math.PI) + "<br />"
+      document.getElementById('info').innerHTML += "thrust: " + thrust.getComponent(2) + "<br />"
+      document.getElementById('info').innerHTML += "velocity: " + velocityKite.length(2) + "<br />"
+      document.getElementById('info').innerHTML += "spring1: " + FSpring[KTIndex1].x + "<br />"
+      document.getElementById('info').innerHTML += "spring2: " + FSpring[KTIndex2].x + "<br />"
+      document.getElementById('info').innerHTML += "tSegmentStretchVelocity: " + tSegmentStretchVelocity[1] + "<br />"
 
     }
 
@@ -387,6 +499,11 @@
       renderer.render( scene, camera );
 
     }
+
+    // // precaculate tether forces
+    // for (var i = 0; i < 10000; i++) {
+    //   update(0.001)
+    // }
 
     render()
 
