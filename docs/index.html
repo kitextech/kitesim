@@ -293,10 +293,9 @@
       if (Key.isDown(Key.Z)) thrust.add( new THREE.Vector3(0, 0, thrustRate * dt) ).max(thrustMax).min(thrustMin)
     }
 
-
     function update(dt) {
 
-      dt = dt/2 // realtime
+      dt = dt/3 // realtime
       dt = Math.min(dt, 0.05) // max timestep of 0.05 seconds
 
       detectUserInput(dt)
@@ -359,10 +358,6 @@
       }
 
 
-
-
-
-
       var apKiteWorld = wind.clone().sub(velocityKite)
       var thrustWorld = thrust.clone().applyQuaternion(kite.getWorldQuaternion())
 
@@ -422,20 +417,15 @@
       var tap1SpringForceKite = FSpring[KTIndex1].clone().applyQuaternion( kite.quaternion.clone().conjugate() )
       var tap2SpringForceKite = FSpring[KTIndex2].clone().applyQuaternion( kite.quaternion.clone().conjugate() )
 
-      // var momentsKite = new THREE.Vector3()
-        // tetherAttachmentPoint1.clone().cross( tap1SpringForceKite )
-        // .add(tetherAttachmentPoint2.clone().cross( tap2SpringForceKite ) )
-        // .setComponent(0,0).setComponent(1,0)
+      var momentsKite = elevatorPositionKite.clone().cross(totalForceElevatorKite)
+        .add(rudderPositionKite.clone().cross(totalForceRudderKite))
+        .add(tetherAttachmentPoint1.clone().cross( tap1SpringForceKite ) )
+        .add(tetherAttachmentPoint2.clone().cross( tap2SpringForceKite ) )
 
-        //elevatorPositionKite.clone().cross(totalForceElevatorKite)
-        //.add(rudderPositionKite.clone().cross(totalForceRudderKite))
-        // .add(tetherAttachmentPoint1.clone().cross( tap1SpringForceKite ) )
-        // .add(tetherAttachmentPoint2.clone().cross( tap2SpringForceKite ) )
+      var angularAcceleration = momentsKite.clone().applyMatrix3(Jinv)//.setComponent(0, 0).setComponent(1, 0)
+      angularVelocityKite.add(angularAcceleration.multiplyScalar(dt))
 
-      // var angularAcceleration = momentsKite.clone().applyMatrix3(Jinv)
-      // angularVelocityKite.add(angularAcceleration.multiplyScalar(dt))
-
-      // kite.rotateOnAxis( angularVelocityKite.clone().normalize(), angularVelocityKite.length() * dt )
+      kite.rotateOnAxis( angularVelocityKite.clone().normalize(), angularVelocityKite.length() * dt )
 
       // tether plus kite forces
       FKite = FSpring[KTIndex1].clone()
@@ -444,7 +434,6 @@
         .add(FDrag[KTIndex2])
         .add(thrustWorld)
         .add(aeroForcesKite.clone().applyQuaternion(kite.quaternion))
-
 
 
       var accelerationKite = FKite.divideScalar(massKite).add(gravity)
