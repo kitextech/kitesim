@@ -343,11 +343,14 @@
     }
 
     class AeroSurface {
-      constructor(wing, area, liftUnitFunc, dragUnitFunc) {
+      constructor(wing, area, symmetric, liftUnitFunc, dragUnitFunc, ) {
         this.wing = wing
         this.area = area
         this.liftUnitFunc = liftUnitFunc
         this.dragUnitFunc = dragUnitFunc
+        // this.symmetric = symmetric
+        this.cl = symmetric ? clSym : clAsym
+        this.cd = symmetric ? cdSym : cdAsym
       }
 
       update(apKiteWorld, apKiteKite) {
@@ -363,21 +366,54 @@
       }
 
       calculateForcesInFrame(liftUnit, dragUnit, apSquare, alfa) {
-        this.lift = liftUnit.clone().multiplyScalar( 1/2 * rho * apSquare * this.area * clAsym(alfa) )
-        this.drag = dragUnit.clone().multiplyScalar( 1/2 * rho * apSquare * this.area * cdAsym(alfa) )
+        this.lift = liftUnit.clone().multiplyScalar( 1/2 * rho * apSquare * this.area * this.cl(alfa) )
+        this.drag = dragUnit.clone().multiplyScalar( 1/2 * rho * apSquare * this.area * this.cd(alfa) )
       }
-
     }
 
-    var wingAero = new AeroSurface(wing, wingArea,
+    class RotatingAeroSurface extends AeroSurface {
+      constructor(wing, area, symmetric, position, liftUnitFunc, dragUnitFunc) {
+        super(wing, area, symmetric, liftUnitFunc, dragUnitFunc)
+        this.position = position
+      }
+
+      update(apKiteWorld, apKiteKite, angularVelocity) {
+        var velElevatorKite = this.position.clone().cross(angularVelocity).multiplyScalar(-1)
+        var apElevatorKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velElevatorKite)
+
+        var liftKiteUnit = this.liftUnitFunc(apElevatorKite).normalize()
+        var dragKiteUnit = this.dragUnitFunc(apElevatorKite).normalize()
+
+        var apElevator = apElevatorKite.clone().applyQuaternion(this.wing.quaternion.clone().conjugate()).setComponent(2,0)
+        // var apElevatorSquare = apElevator.lengthSq()
+
+        this.alfa = Math.atan2(apElevator.y, apElevator.x)
+
+        this.calculateForcesInFrame(liftKiteUnit, dragKiteUnit, apElevator.lengthSq(), this.alfa)
+      }
+    }
+
+
+    var wingAero = new AeroSurface(wing, wingArea, false,
       function(v) { return new THREE.Vector3( v.z, 0, -v.x ) },
-      function(v) { return new THREE.Vector3( v.x, 0, v.z ) }
+      function(v) { return new THREE.Vector3( v.x, 0,  v.z ) }
     )
 
-    var vWingAero = new AeroSurface( VWing, VWingArea,
+    var vWingAero = new AeroSurface( VWing, VWingArea, false,
       function(v) { return new THREE.Vector3( 0, v.z, -v.y ) },
-      function(v) { return new THREE.Vector3(0, v.y, v.z) }
+      function(v) { return new THREE.Vector3( 0, v.y,  v.z ) }
     )
+
+    var elevatorAero = new RotatingAeroSurface( elevator, elevatorArea, true, elevatorPositionKite,
+      function(v) { return new THREE.Vector3( v.z, 0, -v.x ) },
+      function(v) { return new THREE.Vector3( v.x, 0,  v.z ) }
+    )
+
+    var rudderAero = new RotatingAeroSurface( rudder, rudderArea, true, rudderPositionKite,
+      function(v) { return new THREE.Vector3( 0, v.z, -v.y ) },
+      function(v) { return new THREE.Vector3( 0, v.y,  v.z ) }
+    )
+    // var
 
 
 
@@ -414,32 +450,37 @@
       vWingAero.update(apKiteWorld, apKiteKite)
 
       // elevator
-      var velElevatorKite = elevatorPositionKite.clone().cross(angularVelocityKite).multiplyScalar(-1)
-      var apElevatorKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velElevatorKite)
-      var dragElevatorKiteUnit = new THREE.Vector3( apElevatorKite.x, 0, apElevatorKite.z ).normalize()
-      var liftElevatorKiteUnit = new THREE.Vector3( apElevatorKite.z, 0, -apElevatorKite.x ).normalize()
-
-      var apElevator = apElevatorKite.clone().applyQuaternion(elevator.quaternion.clone().conjugate()).setComponent(2,0)
-      var apElevatorSquare = apElevator.lengthSq()
-      var alfaElevator = Math.atan2(apElevator.y, apElevator.x)
-
-      var liftElevatorKite = liftElevatorKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * clSym(alfaElevator) )
-      var dragElevatorKite = dragElevatorKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
-      var totalForceElevatorKite = liftElevatorKite.clone().add(dragElevatorKite)
+      // var velElevatorKite = elevatorPositionKite.clone().cross(angularVelocityKite).multiplyScalar(-1)
+      // var apElevatorKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velElevatorKite)
+      // var dragElevatorKiteUnit = new THREE.Vector3( apElevatorKite.x, 0, apElevatorKite.z ).normalize()
+      // var liftElevatorKiteUnit = new THREE.Vector3( apElevatorKite.z, 0, -apElevatorKite.x ).normalize()
+      //
+      // var apElevator = apElevatorKite.clone().applyQuaternion(elevator.quaternion.clone().conjugate()).setComponent(2,0)
+      // var apElevatorSquare = apElevator.lengthSq()
+      // var alfaElevator = Math.atan2(apElevator.y, apElevator.x)
+      //
+      // var liftElevatorKite = liftElevatorKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * clSym(alfaElevator) )
+      // var dragElevatorKite = dragElevatorKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
+      // var totalForceElevatorKite = liftElevatorKite.clone().add(dragElevatorKite)
+      elevatorAero.update(apKiteWorld, apKiteKite, angularVelocityKite)
+      var totalForceElevatorKite = elevatorAero.lift.clone().add(elevatorAero.drag)
 
       // rudder
-      var velRudderKite = rudderPositionKite.clone().cross(angularVelocityKite).multiplyScalar(-1)
-      var apRudderKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velRudderKite)
-      var dragRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.y, apRudderKite.z ).normalize()
-      var liftRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.z, -apRudderKite.y ).normalize()
+      // var velRudderKite = rudderPositionKite.clone().cross(angularVelocityKite).multiplyScalar(-1)
+      // var apRudderKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velRudderKite)
+      // var dragRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.y, apRudderKite.z ).normalize()
+      // var liftRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.z, -apRudderKite.y ).normalize()
+      //
+      // var apRudder = apRudderKite.clone().applyQuaternion(rudder.quaternion.clone().conjugate()).setComponent(2,0)
+      // var apRudderSquare = apRudder.lengthSq()
+      // var alfaRudder = Math.atan2(apRudder.y, apRudder.x)
+      //
+      // var liftRudderKite = liftRudderKiteUnit.clone().multiplyScalar( 1/2 * rho * apRudderSquare * rudderArea * clSym(alfaRudder) )
+      // var dragRudderKite = dragRudderKiteUnit.clone().multiplyScalar( 1/2 * rho * apRudderSquare * rudderArea * cdSym(alfaRudder) )
+      // var totalForceRudderKite = liftRudderKite.clone().add(dragRudderKite)
+      rudderAero.update(apKiteWorld, apKiteKite, angularVelocityKite)
+      var totalForceRudderKite = rudderAero.lift.clone().add(rudderAero.drag)
 
-      var apRudder = apRudderKite.clone().applyQuaternion(rudder.quaternion.clone().conjugate()).setComponent(2,0)
-      var apRudderSquare = apRudder.lengthSq()
-      var alfaRudder = Math.atan2(apRudder.y, apRudder.x)
-
-      var liftRudderKite = liftRudderKiteUnit.clone().multiplyScalar( 1/2 * rho * apRudderSquare * rudderArea * clSym(alfaRudder) )
-      var dragRudderKite = dragRudderKiteUnit.clone().multiplyScalar( 1/2 * rho * apRudderSquare * rudderArea * cdSym(alfaRudder) )
-      var totalForceRudderKite = liftRudderKite.clone().add(dragRudderKite)
 
       // Total aero forces
       var aeroForcesKite = wingAero.lift.clone().add(wingAero.drag).add(vWingAero.lift).add(vWingAero.drag).add(totalForceElevatorKite).add(totalForceRudderKite)
