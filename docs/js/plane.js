@@ -2,6 +2,9 @@
 kite = new THREE.Object3D(); //create an empty container
 
 
+
+
+
 // Wing
 var wingCord = 0.1, wingTickness = 0.02, wingSpan = 1.4
 var wingArea = wingCord * wingSpan
