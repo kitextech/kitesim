@@ -81,8 +81,8 @@ class Tether {
   updateKiteTetherPosAndVelocity(kite) { // use local variables instead
     this.pos[this.KIndex1] = kite.obj.position.clone().add(kite.tetherAttachmentPoint1.clone().applyQuaternion(kite.obj.quaternion))
     this.pos[this.KIndex2] = kite.obj.position.clone().add(kite.tetherAttachmentPoint2.clone().applyQuaternion(kite.obj.quaternion))
-    this.vel[this.KIndex1] = velocityKite.clone().add(kite.tetherAttachmentPoint1.clone().cross(angularVelocityKite).multiplyScalar(-1).applyQuaternion(kite.obj.quaternion))
-    this.vel[this.KIndex2] = velocityKite.clone().add(kite.tetherAttachmentPoint2.clone().cross(angularVelocityKite).multiplyScalar(-1).applyQuaternion(kite.obj.quaternion))
+    this.vel[this.KIndex1] = kite.velocity.clone().add(kite.tetherAttachmentPoint1.clone().cross(kite.angularVelocity).multiplyScalar(-1).applyQuaternion(kite.obj.quaternion))
+    this.vel[this.KIndex2] = kite.velocity.clone().add(kite.tetherAttachmentPoint2.clone().cross(kite.angularVelocity).multiplyScalar(-1).applyQuaternion(kite.obj.quaternion))
   }
 
   updateTetherPositionAndForces(dt) {

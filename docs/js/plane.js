@@ -59,6 +59,28 @@ class Kite {
     this.tetherAttachmentPoint2 = new THREE.Vector3(0, -prop.wing.span/2, 0)
     this.elevatorPosition = new THREE.Vector3(0, 0, prop.fuselarge.rearLenght-prop.elevator.cord)
     this.rudderPosition = new THREE.Vector3(0, 0, prop.fuselarge.rearLenght)
+
+    // Moment of Inertia kite
+    var JkiteX = 0.15
+    var JkiteY = 0.05
+    var JkiteZ = 0.15
+
+    var J = new THREE.Matrix3()
+    // J.set( 11, 12, 13,
+    //        21, 22, 23,
+    //        31, 32, 33 );
+    J.set( JkiteX, 0, 0,
+          0, JkiteY, 0,
+          0, 0, JkiteZ );
+
+    this.Jinv = new THREE.Matrix3().getInverse ( J, function() {
+      alert('No Inverse')
+    } )
+
+    this.angularVelocity = new THREE.Vector3( 0, 0, 0 )
+    this.velocity = new THREE.Vector3( 0, 0, 0)
+
+    this.mass = 1.5
   }
 
   createWing(prop) {
@@ -68,7 +90,7 @@ class Kite {
     wing.rotateZ( - 5 / 180 * Math.PI);
 
     wing.position.set(-prop.thickness/2, -prop.span/2, - prop.cord/3)
-    this.obj.add( wing );//add a mesh with geometry to it
+    this.obj.add( wing )
     return wing
   }
 
@@ -76,13 +98,13 @@ class Kite {
     var VWing = this.generateMesh(prop)
     VWing.rotateY( - Math.PI / 2 );
     VWing.rotateZ( - 8 / 180 * Math.PI);
+    var VWing2 = VWing.clone()
 
     VWing.position.set(prop.span/2, -prop.span/2, -prop.cord/3)
-    var VWing2 = VWing.clone()
     VWing2.position.set(prop.span/2, prop.span/2, -prop.cord/3)
 
-    this.obj.add( VWing );//add a mesh with geometry to it
-    this.obj.add( VWing2 );//add a mesh with geometry to it
+    this.obj.add( VWing )
+    this.obj.add( VWing2 )
     return VWing
   }
 
@@ -91,15 +113,15 @@ class Kite {
     elevator.position.set(-prop.thickness/2+0.04, -prop.span/2 , fuselarge.rearLenght-prop.cord )
     elevator.rotateZ( - Math.PI / 2 );
     elevator.rotateY( - Math.PI / 2 );
-    this.obj.add( elevator );//add a mesh with geometry to it
+    this.obj.add( elevator )
     return elevator
   }
 
   createRudder(prop, fuselarge) {
-    var rudder = this.generateMesh(prop) //new THREE.Mesh( geometry, material );
+    var rudder = this.generateMesh(prop)
     rudder.position.set(prop.span/2, -prop.thickness/2 , fuselarge.rearLenght)
     rudder.rotateY( - Math.PI / 2 );
-    this.obj.add( rudder );//add a mesh with geometry to it
+    this.obj.add( rudder );
     return rudder
   }
 
