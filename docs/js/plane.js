@@ -5,13 +5,15 @@ var kiProp = {
   wing: {
     cord: 0.1,
     thickness: 0.02,
-    span: 1.4
+    span: 1.4,
+    sym: false
   },
 
   vWing : {
     cord: 0.1,
     thickness: 0.02,
-    span: 0.8
+    span: 0.8,
+    sym: false
   },
 
   fuselarge: {
@@ -23,13 +25,15 @@ var kiProp = {
   rudder: {
     thickness : 0.01,
     cord : 0.06,
-    span : 0.6
+    span : 0.6,
+    sym : true
   },
 
   elevator: {
     thickness : 0.01,
     cord : 0.06,
-    span : 0.6
+    span : 0.6,
+    sym : true
   }
 }
 
@@ -58,15 +62,7 @@ class Kite {
   }
 
   createWing(prop) {
-    var shape = new THREE.Shape();
-    shape.moveTo( 0,0 );
-    shape.lineTo( 0, prop.thickness );
-    shape.lineTo( prop.cord, 0 );
-    shape.lineTo( 0, 0 );
-
-    var geometry = new THREE.ExtrudeGeometry( shape, this.extrudeSettings(prop.span) );
-    var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
-    var wing = new THREE.Mesh( geometry, material );
+    var wing = this.generateMesh(prop)
     wing.rotateZ( - Math.PI / 2 );
     wing.rotateY( - Math.PI / 2 );
     wing.rotateZ( - 5 / 180 * Math.PI);
@@ -77,15 +73,7 @@ class Kite {
   }
 
   createVerticalWings(prop) {
-    var shape = new THREE.Shape();
-    shape.moveTo( 0,0 );
-    shape.lineTo( 0, prop.thickness );
-    shape.lineTo( prop.cord, 0 );
-    shape.lineTo( 0, 0 );
-
-    var geometry = new THREE.ExtrudeGeometry( shape, this.extrudeSettings(prop.span) );
-    var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
-    var VWing = new THREE.Mesh( geometry, material );
+    var VWing = this.generateMesh(prop)
     VWing.rotateY( - Math.PI / 2 );
     VWing.rotateZ( - 8 / 180 * Math.PI);
 
@@ -99,15 +87,7 @@ class Kite {
   }
 
   createElevator(prop, fuselarge) {
-    var shape = new THREE.Shape();
-    shape.moveTo( 0, 0 );
-    shape.lineTo( 0, prop.thickness );
-    shape.lineTo( prop.cord, prop.thickness/2 );
-    shape.lineTo( 0, 0 );
-
-    var geometry = new THREE.ExtrudeGeometry( shape, this.extrudeSettings(prop.span) );
-    var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
-    var elevator = new THREE.Mesh( geometry, material );
+    var elevator = this.generateMesh(prop)
     elevator.position.set(-prop.thickness/2+0.04, -prop.span/2 , fuselarge.rearLenght-prop.cord )
     elevator.rotateZ( - Math.PI / 2 );
     elevator.rotateY( - Math.PI / 2 );
@@ -116,15 +96,7 @@ class Kite {
   }
 
   createRudder(prop, fuselarge) {
-    var shape = new THREE.Shape();
-    shape.moveTo( 0,0 );
-    shape.lineTo( 0, prop.thickness );
-    shape.lineTo( prop.cord, prop.thickness/2 );
-    shape.lineTo( 0, 0 );
-
-    var geometry = new THREE.ExtrudeGeometry( shape, this.extrudeSettings(prop.span) );
-    var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
-    var rudder = new THREE.Mesh( geometry, material );
+    var rudder = this.generateMesh(prop) //new THREE.Mesh( geometry, material );
     rudder.position.set(prop.span/2, -prop.thickness/2 , fuselarge.rearLenght)
     rudder.rotateY( - Math.PI / 2 );
     this.obj.add( rudder );//add a mesh with geometry to it
@@ -140,12 +112,29 @@ class Kite {
     this.obj.add( cylinder );
   }
 
-  extrudeSettings(span) {
+  extrudeSettings(prop) {
     return {
       steps: 1,
-      amount: span,
+      amount: prop.span,
       bevelEnabled: false
     }
+  }
+
+  extrudeShape(prop) {
+    var shape = new THREE.Shape();
+    shape.moveTo( 0,0 );
+    shape.lineTo( 0, prop.thickness );
+    if (prop.sym) { shape.lineTo( prop.cord, prop.thickness/2 ) }
+    else { shape.lineTo( prop.cord, 0 ) }
+    shape.lineTo( 0, 0 );
+    return shape
+  }
+
+  generateMesh(prop) {
+    var geometry = new THREE.ExtrudeGeometry( this.extrudeShape(prop), this.extrudeSettings(prop) );
+    var material = new THREE.MeshLambertMaterial( { color: 0x00ff00 } );
+    var mesh = new THREE.Mesh( geometry, material );
+    return mesh
   }
 
 }
