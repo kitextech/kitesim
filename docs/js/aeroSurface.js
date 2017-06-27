@@ -34,7 +34,7 @@ class RotatingAeroSurface extends AeroSurface {
 
   update(apKiteWorld, apKiteKite, angularVelocity) {
     var velWingKite = this.position.clone().cross(angularVelocity).multiplyScalar(-1)
-    var apWingKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velWingKite)
+    var apWingKite = apKiteWorld.clone().applyQuaternion(kite.obj.getWorldQuaternion().conjugate()).sub(velWingKite)
 
     var liftKiteUnit = this.liftUnitFunc(apWingKite).normalize()
     var dragKiteUnit = this.dragUnitFunc(apWingKite).normalize()
