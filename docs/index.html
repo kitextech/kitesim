@@ -55,9 +55,9 @@
 
     // camera
     camera.position.x = -6;
-    camera.position.y = 6;
-    camera.position.z = 6;
-    camera.lookAt(new THREE.Vector3( 0, 5, 0 ))
+    camera.position.y = 0;
+    camera.position.z = 0;
+    camera.lookAt(new THREE.Vector3( 0, 0, 0 ))
 
     function setupLights() {
       // LIGHTS
@@ -77,16 +77,11 @@
 
     // Helpers
     axes = new THREE.AxisHelper(10)
-    helper = new THREE.GridHelper(100, 100)
+    helper = new THREE.GridHelper(25, 25)
     // helper.geometry.rotateX( Math.PI / 2 );
     helper.setColors(0x0000ff, 0x808080)
     scene.add(axes)
     scene.add(helper)
-
-
-    var kite = new Kite(kiProp)
-    kite.obj.add(new THREE.AxisHelper(5))
-    kite.obj.rotateX(Math.PI / 2 )
 
     var renderer = new THREE.WebGLRenderer()
     renderer.setSize( window.innerWidth, window.innerHeight )
@@ -123,9 +118,95 @@
     //
     // addHelperArrows()
 
+    var angleError, currentHeading, angleToPoint
+
+    class PathFollow {
+      constructor(headingAngle, altitudeAngle, radius, N, rudder) {
+        this.index = Math.floor(N/2)
+        this.lookAheadDistance = radius*0.9
+        this.points = []
+        this.N = N
+        this.rudder = rudder
+        this.on = false
+
+        for (var i = 0; i < this.N; i++) {
+          this.points.push( new THREE.Vector2( radius * Math.cos( -i/N*2*Math.PI ), radius * Math.sin( -i/N*2*Math.PI ) ) )
+        }
+
+        this.quaternion = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(0 , headingAngle/180 * Math.PI, altitudeAngle/180 * Math.PI, 'YZX')
+        )
+        this.qConjugate = this.quaternion.clone().conjugate()
+
+        var pointer = new THREE.ArrowHelper(
+          new THREE.Vector3(1,0,0).applyQuaternion(this.quaternion),
+          new THREE.Vector3(0,0,0),
+          10,
+          0xff0000 )
+
+        scene.add(pointer)
+
+        this.box = new THREE.Mesh(
+          new THREE.BoxGeometry( 1, 1, 1 ),
+          new THREE.MeshLambertMaterial( { color: 0xffff00 } )
+          )
+        scene.add(this.box)
+
+        this.setUpListener()
+      }
+
+      update(position, velocity) {
+
+        // move position in to local coordinate system
+        var posLocal3D = position.applyQuaternion(this.qConjugate)
+        var posLocal2D = new THREE.Vector2(posLocal3D.z, posLocal3D.y)
+
+        var velLocal = velocity.applyQuaternion(this.qConjugate).setComponent(0,0) // ignore x
+
+        while (posLocal2D.distanceTo( this.points[this.index] ) < this.lookAheadDistance ) {
+            this.index = (this.index + 1) % this.N
+        }
+
+        var target = this.points[this.index]
+        var tw = new THREE.Vector3(75, target.y, target.x).applyQuaternion(this.quaternion)
+
+        this.box.position.set(tw.x, tw.y, tw.z)
+
+        currentHeading = Math.atan2(velLocal.z, velLocal.y)
+        var vectorToTarget = this.points[this.index].clone().sub(posLocal2D)
+        angleToPoint = Math.atan2(vectorToTarget.x, vectorToTarget.y)
+
+        angleError = ((currentHeading - angleToPoint) * 180 / Math.PI) % 360
+        if (angleError < -180) angleError += 360
+        if (angleError > 180) angleError -= 360
+
+        var deltaAngle = Math.min( Math.max(-angleError/8, -12), 12) - 8
+
+        if (this.on) {
+          this.rudder.setRotationFromEuler( new THREE.Euler(0, - Math.PI / 2, deltaAngle/180 * Math.PI ), 'XYZ')
+        }
+      }
+
+      toggle() {
+        this.on = !this.on
+      }
+
+      setUpListener() {
+        var self = this
+        document.addEventListener('keydown',function(e) {
+           var key = e.keyCode || e.which;
+           if(key === 81) {
+              self.toggle()
+           }
+        }, false);
+      }
+    }
+
+
+
     // Constants
     const rho = 1.205
-    const wind = new THREE.Vector3( 10, 0, 0)
+    const wind = new THREE.Vector3( 5, 0, 0)
     const gravity = new THREE.Vector3( 0, -9.82, 0)
 
     var teProp = {
@@ -140,12 +221,22 @@
       cd : 0.95,
     }
 
+    var kite2 = new Kite(kiProp)
+    scene.add(kite2.obj)
+
+
+    var kite = new Kite(kiProp)
+    kite.obj.add(new THREE.AxisHelper(5))
+    kite.obj.rotateX(Math.PI / 2 )
+
     // kite
     var dx = Math.sqrt(teProp.kiteTLength*teProp.kiteTLength-kite.tetherAttachmentPoint1.y*kite.tetherAttachmentPoint1.y)
     kite.obj.position.add( new THREE.Vector3(teProp.totalLength + dx, 0, 0) )
     scene.add(kite.obj)
 
     var mTether = new Tether(kite)
+
+    var pf = new PathFollow(0, 25, 20, 40, kite.rudder)
 
 
     function detectUserInput(dt) {
@@ -256,6 +347,8 @@
         mTether.updateKiteTetherPosAndVelocity(kite)
       }
 
+      pf.update(kite.obj.position.clone(), kite.velocity.clone())
+
       // UPDATE UI
       // Set the position of the boxes showing the tether.
       for (var i = 0; i <= mTether.indexEnd; i++) {
@@ -295,6 +388,29 @@
       // document.getElementById('info').innerHTML += "spring1: " + FSpring[KTIndex1].x + "<br />"
       // document.getElementById('info').innerHTML += "spring2: " + FSpring[KTIndex2].x + "<br />"
       // document.getElementById('info').innerHTML += "tSegmentStretchVelocity: " + tSegmentStretchVelocity[1] + "<br />"
+      var euler = new THREE.Euler(0,0,0, 'ZYX')
+      euler.setFromQuaternion(kite.obj.quaternion, 'ZYX', false)
+
+      document.getElementById('info').innerHTML += "x: " + euler.x + "<br />"
+      document.getElementById('info').innerHTML += "y: " + euler.y + "<br />"
+      document.getElementById('info').innerHTML += "z: " + euler.z + "<br />"
+
+      var px = kite.obj.position.x, pz = kite.obj.position.y
+      var b = Math.atan2(kite.obj.position.z, px) * 180 / Math.PI
+      var z = Math.atan2(kite.obj.position.y, Math.sqrt(px*px + pz+pz) ) * 180 / Math.PI
+
+      document.getElementById('info').innerHTML += "<br />"
+      document.getElementById('info').innerHTML += "b: " + b + "<br />"
+      document.getElementById('info').innerHTML += "z: " + z + "<br />"
+
+      document.getElementById('info').innerHTML += "<br />"
+      document.getElementById('info').innerHTML += "rudder: " + new THREE.Euler().setFromQuaternion(kite.rudder.quaternion, 'XYZ').x * 180/Math.PI + "<br />"
+      document.getElementById('info').innerHTML += "angleError: " + Math.floor(angleError) + "<br />"
+      document.getElementById('info').innerHTML += "angleToPoint: " + Math.floor(angleToPoint*180/Math.PI) + "<br />"
+      document.getElementById('info').innerHTML += "currentHeading: " + Math.floor(currentHeading*180/Math.PI) + "<br />"
+
+
+
 
     }
 
