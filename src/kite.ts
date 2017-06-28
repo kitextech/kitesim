@@ -1,5 +1,6 @@
 // KITE
 import { Object3D, Mesh, Vector3, Matrix3, CylinderGeometry, MeshLambertMaterial, ExtrudeGeometry, Shape } from 'three'
+import { AeroSurface, AeroSurfaceRotating } from "./AeroSurface"
 
 export interface WingProperties {
     cord: number
@@ -7,6 +8,7 @@ export interface WingProperties {
     span: number
     sym: boolean
     area?: number
+    position?: Vector3 
 }
 
 interface FuselargeProp {
@@ -90,10 +92,10 @@ addAreaCalculation(kiteProp.elevator, 1)
 
 export class Kite {
   obj: Object3D
-  wing: Mesh
-  vWing: Mesh
-  elevator: Mesh
-  rudder: Mesh
+  wing: AeroSurface
+  vWing: AeroSurface
+  elevator: AeroSurfaceRotating
+  rudder: AeroSurfaceRotating
   fuselarge: Mesh
 
   tetherAttachmentPoint1: Vector3
@@ -108,16 +110,34 @@ export class Kite {
 
   constructor(prop: KiteProperties) {
     this.obj = new Object3D(); //create an empty container
-    this.wing = this.createWing(prop.wing)
-    this.vWing = this.createVerticalWings(prop.vWing)
-    this.elevator = this.createElevator(prop.elevator, prop.fuselarge)
-    this.rudder = this.createRudder(prop.rudder, prop.fuselarge)
+
+    this.wing = new AeroSurface(this.createWing(prop.wing), prop.wing,
+        function(v) { return new Vector3(v.z, 0, -v.x) },
+        function(v) { return new Vector3(v.x, 0, v.z) }
+    )
+
+    this.vWing = new AeroSurface(this.createVerticalWings(prop.vWing), prop.vWing,
+        function(v) { return new Vector3(0, v.z, -v.y) },
+        function(v) { return new Vector3(0, v.y, v.z) }
+    ) 
+    
+    prop.elevator.position = new Vector3(0, 0, prop.fuselarge.rearLength-prop.elevator.cord)
+    this.elevator = new AeroSurfaceRotating( this.createElevator(prop.elevator, prop.fuselarge), prop.elevator,
+        function(v) { return new Vector3(v.z, 0, -v.x) },
+        function(v) { return new Vector3(v.x, 0, v.z) }
+    )
+
+    prop.rudder.position = new Vector3(0, 0, prop.fuselarge.rearLength)
+    this.rudder = new AeroSurfaceRotating(this.createRudder(prop.rudder, prop.fuselarge), prop.rudder,
+        function(v) { return new Vector3(0, v.z, -v.y) },
+        function(v) { return new Vector3(0, v.y, v.z) }
+    )
+    
     this.createFuselarge(prop.fuselarge)
 
     this.tetherAttachmentPoint1 = new Vector3(0, prop.wing.span/2, 0)
     this.tetherAttachmentPoint2 = new Vector3(0, -prop.wing.span/2, 0)
-    this.elevatorPosition = new Vector3(0, 0, prop.fuselarge.rearLength-prop.elevator.cord)
-    this.rudderPosition = new Vector3(0, 0, prop.fuselarge.rearLength)
+
 
     this.Jinv = new Matrix3().getInverse(prop.J, function() {
       alert('No Inverse')
@@ -179,26 +199,26 @@ export class Kite {
     this.obj.add( cylinder );
   }
 
-  extrudeSettings(prop: WingProperties) {
-    return {
-      steps: 1,
-      amount: prop.span,
-      bevelEnabled: false
-    }
-  }
-
-  extrudeShape(prop: WingProperties) {
-    var shape = new Shape();
-    shape.moveTo( 0,0 );
-    shape.lineTo( 0, prop.thickness );
-    if (prop.sym) { shape.lineTo( prop.cord, prop.thickness/2 ) }
-    else { shape.lineTo( prop.cord, 0 ) }
-    shape.lineTo( 0, 0 );
-    return shape
-  }
-
   generateMesh(prop: WingProperties) {
-    var geometry = new ExtrudeGeometry( this.extrudeShape(prop), this.extrudeSettings(prop) );
+    function extrudeSettings(prop: WingProperties) {
+      return {
+        steps: 1,
+        amount: prop.span,
+        bevelEnabled: false
+      }
+    }
+
+    function extrudeShape(prop: WingProperties) {
+      var shape = new Shape();
+      shape.moveTo( 0,0 );
+      shape.lineTo( 0, prop.thickness );
+      if (prop.sym) { shape.lineTo( prop.cord, prop.thickness/2 ) }
+      else { shape.lineTo( prop.cord, 0 ) }
+      shape.lineTo( 0, 0 );
+      return shape
+    }
+
+    var geometry = new ExtrudeGeometry( extrudeShape(prop), extrudeSettings(prop) );
     var material = new MeshLambertMaterial( { color: 0x00ff00 } );
     var mesh = new Mesh( geometry, material );
     return mesh
