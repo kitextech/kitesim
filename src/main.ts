@@ -18,16 +18,79 @@ scene.add(kite.obj)
 
 camera.position.z = 5;
 
-var animate = function() {
-    requestAnimationFrame(animate);
 
-    kite.obj.rotation.x += 0.02;
-    kite.obj.rotation.y += 0.02;
 
-    renderer.render(scene, camera);
-};
+      
 
-animate();
+
+
+function update(dt) {
+
+    dt = dt // realtime
+    dt = Math.min(dt, 0.03) // max timestep of 0.05 seconds
+
+    // detectUserInput(dt)
+
+    var subFrameIterations = 20
+    let dtSub = dt/subFrameIterations
+
+    for (var k = 0; k < subFrameIterations; k++) {
+
+    // mTether.updateTetherPositionAndForces(dt/subFrameIterations)
+
+        // .add( kiteTF.spring1 )
+        // .add( kiteTF.spring2 )
+        // .add( kiteTF.drag1 )
+        // .add( kiteTF.drag2 )
+        // .add( thrustWorld )
+
+        // mTether.mass[mTether.KIndex1] + mTether.mass[mTether.KIndex2]
+
+        kite.updateKitePositionAndForces(dtSub, [], 0)
+
+        // mTether.updateKiteTetherPosAndVelocity(kite)
+    }
+
+    // pf.update(kite.obj.position.clone(), kite.velocity.clone())
+
+    // // UPDATE UI
+    // // Set the position of the boxes showing the tether.
+    // for (var i = 0; i <= mTether.indexEnd; i++) {
+    // mTether.renderObjects[i].position.set(mTether.pos[i].x, mTether.pos[i].y, mTether.pos[i].z)
+    // }
+
+}
+
+
+
+var lastTime, animFrame
+
+function render(ms) {
+    // we get passed a timestamp in milliseconds
+    // we use it to determine how much time has passed since the last call
+    if (lastTime) {
+        update((ms-lastTime)/1000) // call update and pass delta time in seconds
+    }
+
+    lastTime = ms
+    animFrame = requestAnimationFrame(render)
+    renderer.render( scene, camera );
+
+}
+
+render(null)
+
+
+// var animate = function() {
+//     requestAnimationFrame(animate);
+
+//     kite.obj.rotation.x += 0.02;
+//     kite.obj.rotation.y += 0.02;
+
+//     renderer.render(scene, camera);
+// };
+
+// animate();
 
 
 function setupLights() {

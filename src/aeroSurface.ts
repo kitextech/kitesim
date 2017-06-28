@@ -1,6 +1,7 @@
 import { Mesh, Vector3 } from 'three'
 import { clSym, cdSym, clAsym, cdAsym } from './aeroData'
 import { Kite, WingProperties } from './kite'
+import * as C from "./Constants" 
 
 export abstract class AeroSurfaceBase {
   // readonly wing: Mesh
@@ -16,8 +17,8 @@ export abstract class AeroSurfaceBase {
   constructor( readonly mesh: Mesh, readonly prop: WingProperties, liftUnitFunc, dragUnitFunc) {
     // this.wing = wing
     // this.area = area
-    // this.liftUnitFunc = liftUnitFunc
-    // this.dragUnitFunc = dragUnitFunc
+    this.liftUnitFunc = liftUnitFunc
+    this.dragUnitFunc = dragUnitFunc
     this.cl = prop.sym ? clSym : clAsym
     this.cd = prop.sym ? cdSym : cdAsym
   }
@@ -26,9 +27,9 @@ export abstract class AeroSurfaceBase {
     return apKiteWorld.clone().applyQuaternion(this.mesh.getWorldQuaternion().conjugate()).setComponent(2,0)
   }
 
-  calculateForcesInFrame(liftUnit: Vector3, dragUnit: Vector3, apSquare: number, alfa: number, rho: number) {
-    this.lift = liftUnit.clone().multiplyScalar( 1/2 * rho * apSquare * this.prop.area * this.cl(alfa) )
-    this.drag = dragUnit.clone().multiplyScalar( 1/2 * rho * apSquare * this.prop.area * this.cd(alfa) )
+  calculateForcesInFrame(liftUnit: Vector3, dragUnit: Vector3, apSquare: number, alfa: number) {
+    this.lift = liftUnit.clone().multiplyScalar( 1/2 * C.RHO * apSquare * this.prop.area * this.cl(alfa) )
+    this.drag = dragUnit.clone().multiplyScalar( 1/2 * C.RHO * apSquare * this.prop.area * this.cd(alfa) )
   }
 }
 
@@ -37,12 +38,12 @@ export class AeroSurface extends AeroSurfaceBase {
     super(mesh, prop, liftUnitFunc, dragUnitFunc)
   }
   
-  update(apKiteWorld: Vector3, apKiteKite: Vector3, rho: number) {
+  update(apKiteWorld: Vector3, apKiteKite: Vector3) {
     var ap = this.localApparentWind(apKiteWorld)
     this.alfa = Math.atan2(ap.y, ap.x)
     var liftKiteUnit = this.liftUnitFunc(apKiteKite).normalize()
     var dragKiteUnit = this.dragUnitFunc(apKiteKite).normalize()
-    this.calculateForcesInFrame(liftKiteUnit, dragKiteUnit, ap.lengthSq(), this.alfa, rho)
+    this.calculateForcesInFrame(liftKiteUnit, dragKiteUnit, ap.lengthSq(), this.alfa)
   }
 }
 
@@ -53,7 +54,7 @@ export class AeroSurfaceRotating extends AeroSurfaceBase {
     super(mesh, prop, liftUnitFunc, dragUnitFunc)
   }
 
-  update(apKiteWorld: Vector3, apKiteKite: Vector3, kite: Kite, rho) {
+  update(apKiteWorld: Vector3, apKiteKite: Vector3, kite: Kite) {
     var velWingKite = this.prop.position.clone().cross(kite.angularVelocity).multiplyScalar(-1)
     var apWingKite = apKiteWorld.clone().applyQuaternion(kite.obj.getWorldQuaternion().conjugate()).sub(velWingKite)
 
@@ -63,7 +64,7 @@ export class AeroSurfaceRotating extends AeroSurfaceBase {
     var apWing = apWingKite.clone().applyQuaternion(this.mesh.quaternion.clone().conjugate()).setComponent(2,0)
     this.alfa = Math.atan2(apWing.y, apWing.x)
 
-    this.calculateForcesInFrame(liftKiteUnit, dragKiteUnit, apWing.lengthSq(), this.alfa, rho)
+    this.calculateForcesInFrame(liftKiteUnit, dragKiteUnit, apWing.lengthSq(), this.alfa)
     this.totalAero = this.lift.clone().add(this.drag)
   }
 }
