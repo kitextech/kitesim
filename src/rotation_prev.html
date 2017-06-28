@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SVG.js</title>
+  <!-- <script type="text/javascript" src="./js/svg.js"></script> -->
+  <script src="./js/three.js"></script>
+  <script src="./js/threeJSOrbitControl.js"></script>
+  <script src="./js/aeroData.js"></script>
+  <script src="./js/plane.js"></script>
+
+
+  <style>
+    body { margin: 0; }
+    canvas { width: 100%; height: 100% }
+
+    #info {
+    	position: absolute;
+    	top: 10px;
+    	width: 100%;
+    	text-align: left;
+    	z-index: 100;
+    	display:block;
+      color: white;
+    }
+
+  </style>
+</head>
+<body>
+  <div id="info">Description</div>
+  <!-- <div id="drawing"></div> -->
+  <!-- <script type="text/javascript" src="./js/main.js"></script> -->
+  <script>
+
+    var Key = {
+      _pressed: {},
+
+      LEFT: 37,
+      UP: 38,
+      RIGHT: 39,
+      DOWN: 40,
+      A: 65,
+      S: 83,
+      X: 88,
+      Z: 90,
+
+      isDown: function(keyCode) {
+        return this._pressed[keyCode];
+      },
+
+      onKeydown: function(event) {
+        this._pressed[event.keyCode] = true;
+      },
+
+      onKeyup: function(event) {
+        delete this._pressed[event.keyCode];
+      }
+    };
+
+    window.addEventListener('keydown', function(e) { Key.onKeydown(e) })
+    window.addEventListener('keyup', function(e) { Key.onKeyup(e) })
+
+    // user input
+    var rotationRate = Math.PI // rad / s
+    var thrustRate = 20 // N / s
+    var thrustMax = new THREE.Vector3( 0, 0, -35) // N
+    var thrustMin = new THREE.Vector3( 0, 0, 0) // N
+    var thrust = new THREE.Vector3( 0, 0, -25) // in the frame of the kite
+
+
+    var scene = new THREE.Scene();
+    var camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+    //controls
+    controls = new THREE.OrbitControls(camera);
+    controls.rotateSpeed = 1.0;
+    controls.zoomSpeed = 1.2;
+    controls.panSpeed = 0.8;
+
+    // Helpers
+    axes = new THREE.AxisHelper(10);
+    helper = new THREE.GridHelper(100, 100);
+    // helper.geometry.rotateX( Math.PI / 2 );
+    helper.setColors(0x0000ff, 0x808080);
+    scene.add(axes);
+    scene.add(helper);
+
+    var renderer = new THREE.WebGLRenderer();
+    renderer.setSize( window.innerWidth, window.innerHeight );
+    document.body.appendChild( renderer.domElement );
+
+    // LIGHTS
+    hemiLight = new THREE.HemisphereLight( 0xffffff, 0xffffff, 0.6 );
+    hemiLight.color.setHSL( 0.6, 1, 0.6 );
+    hemiLight.groundColor.setHSL( 0.095, 1, 0.75 );
+    hemiLight.position.set( 0, 500, 0 );
+    scene.add( hemiLight );
+    //
+    dirLight = new THREE.DirectionalLight( 0xffffff, 1 );
+    dirLight.color.setHSL( 0.1, 1, 0.95 );
+    dirLight.position.set( 20, 100, 0 );
+    dirLight.position.multiplyScalar( 50 );
+    scene.add( dirLight );
+
+
+    camera.position.x = -6;
+    camera.position.y = 6;
+    camera.position.z = 6;
+    camera.lookAt(new THREE.Vector3( 0, 0, 0 ))
+
+    //* KITE THREE JS Definition is define in plane.js
+
+    kite.applyMatrix(new THREE.Matrix4().makeScale(10,10,10)) // = new THREE.Vector3( 100, 100, 100 )
+    kite.rotateX(Math.PI / 2 )
+
+    var JkiteX = 0.15
+    var JkiteY = 0.05
+    var JkiteZ = 0.15
+
+    var J = new THREE.Matrix3()
+    // J.set( 11, 12, 13,
+    //        21, 22, 23,
+    //        31, 32, 33 );
+
+    J.set( JkiteX, 0, 0,
+          0, JkiteY, 0,
+          0, 0, JkiteZ );
+
+    var Jinv = new THREE.Matrix3().getInverse ( J, function() {
+      alert('No Inverse')
+    } )
+
+
+    var angularVelocity = new THREE.Vector3( 0, 0, 0 )
+
+    // Constants
+    var rho = 1.205
+    var wind = new THREE.Vector3( 10, 0, 0)
+
+    scene.add( kite )
+
+    var elevatorPositionKite = new THREE.Vector3(0, 0, fuselargeRear-elevatorCord)
+    var rudderPositionKite = new THREE.Vector3(0, 0, fuselargeRear)
+
+    // helper arrows
+    var dir = new THREE.Vector3( 1, 0, 0 );
+    var origin = new THREE.Vector3( 0, 0, 0 );
+    var length = 1;
+
+    var arrowHelperLift = new THREE.ArrowHelper( dir, origin, length, 0xffff00 )
+    var arrowHelperDrag = new THREE.ArrowHelper( dir, origin, length, 0xff0000 )
+    var arrowHelperLiftSide = new THREE.ArrowHelper( dir, origin, length, 0xff5500 )
+    var arrowHelperDragSide = new THREE.ArrowHelper( dir, origin, length, 0xff0000 )
+    var arrowHelperElevator = new THREE.ArrowHelper( dir, elevatorPositionKite, length, 0x0000ff )
+
+    kite.add( arrowHelperLift )
+    kite.add( arrowHelperDrag )
+    kite.add( arrowHelperLiftSide )
+    kite.add( arrowHelperDragSide )
+    kite.add( arrowHelperElevator )
+
+
+
+    function update(dt) {
+
+      dt = dt // realtime
+      dt = Math.min(dt, 0.05) // max timestep of 0.05 seconds
+      // var rotation = new THREE.Quaternion().setFromAxisAngle(  )
+
+      // var a = THREE.Vector3(0, 0, -thrustRate * dt)
+      // user input
+      // if (Key.isDown(Key.UP)) kite.rotateY(-rotationRate * dt)
+      if (Key.isDown(Key.UP)) elevator.rotateZ(-rotationRate * dt)
+      if (Key.isDown(Key.LEFT)) rudder.rotateZ(-rotationRate * dt)
+      // if (Key.isDown(Key.DOWN)) kite.rotateY(rotationRate * dt)
+      if (Key.isDown(Key.DOWN)) elevator.rotateZ(rotationRate * dt)
+      if (Key.isDown(Key.RIGHT)) rudder.rotateZ(rotationRate * dt)
+      if (Key.isDown(Key.S)) kite.rotateZ(-rotationRate/4 * dt)
+      if (Key.isDown(Key.X)) kite.rotateZ(rotationRate/4 * dt)
+      if (Key.isDown(Key.A)) thrust.add( new THREE.Vector3(0, 0, -thrustRate * dt) ).max(thrustMax).min(thrustMin)
+      if (Key.isDown(Key.Z)) thrust.add( new THREE.Vector3(0, 0, thrustRate * dt) ).max(thrustMax).min(thrustMin)
+      document.getElementById('info').innerHTML = "thrust: " + thrust.getComponent(2)
+
+
+      // KITE
+      var thrustWorld = thrust.clone().applyQuaternion(kite.getWorldQuaternion())
+
+      var apKiteWorld = wind // subtract kite velocity
+      // calculate lift, drag for wing, VerticalWings, elevator, rudder
+      // ap = apparent wind
+
+      var apKiteKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate())
+
+      var dragKiteUnit = new THREE.Vector3(apKiteKite.x, 0, apKiteKite.z).normalize()
+      var dragSideKiteUnit = new THREE.Vector3(0, apKiteKite.y, apKiteKite.z).normalize()
+
+      var liftKiteUnit = new THREE.Vector3( apKiteKite.z, 0, -apKiteKite.x ).normalize()
+      var liftSideKiteUnit = new THREE.Vector3( 0, apKiteKite.z, -apKiteKite.y ).normalize()
+
+      // main wing
+      var apWing = apKiteWorld.clone().applyQuaternion(wing.getWorldQuaternion().conjugate()).setComponent(2,0)
+      var apWingSquare = apWing.lengthSq()
+      var alfaWing = Math.atan2(apWing.y, apWing.x)
+
+      var wingLift = liftKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * clAsym(alfaWing) )
+      var wingDrag = dragKiteUnit.clone().multiplyScalar( 1/2 * rho * apWingSquare * wingArea * cdAsym(alfaWing) )
+
+      // var wingDragWorld = wingDrag.clone().applyQuaternion(kite.getWorldQuaternion())
+      // var wingLiftWorld = wingLift.clone().applyQuaternion(kite.getWorldQuaternion())
+
+
+      // vertical wing
+      var apVWing = apKiteWorld.clone().applyQuaternion(VWing.getWorldQuaternion().conjugate()).setComponent(2, 0)
+      var apVWingSquare = apVWing.lengthSq()
+      var alfaVWing = Math.atan2(apVWing.y, apVWing.x)
+
+      var wingSideLift = liftSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * clAsym(alfaVWing) )
+      var wingSideDrag = dragSideKiteUnit.clone().multiplyScalar( 1/2 * rho * apVWingSquare * VWingArea * cdAsym(alfaVWing) )
+
+      // var vwDragWorld = wingSideDrag.clone().applyQuaternion(kite.getWorldQuaternion())
+      // var vwLiftWorld = wingSideLift.clone().applyQuaternion(kite.getWorldQuaternion())
+
+      // elevator
+      var velElevatorKite = elevatorPositionKite.clone().cross(angularVelocity).multiplyScalar(-1)
+      var apElevatorKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velElevatorKite)
+      var dragElevatorKiteUnit = new THREE.Vector3( apElevatorKite.x, 0, apElevatorKite.z ).normalize()
+      var liftElevatorKiteUnit = new THREE.Vector3( apElevatorKite.z, 0, -apElevatorKite.x ).normalize()
+
+      var apElevator = apElevatorKite.clone().applyQuaternion(elevator.quaternion.clone().conjugate()).setComponent(2,0)
+      var apElevatorSquare = apElevator.lengthSq()
+      var alfaElevator = Math.atan2(apElevator.y, apElevator.x)
+
+
+      var liftElevatorKite = liftElevatorKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * clSym(alfaElevator) )
+      var dragElevatorKite = dragElevatorKiteUnit.clone().multiplyScalar( 1/2 * rho * apElevatorSquare * elevatorArea * cdSym(alfaElevator) )
+
+      var totalForceElevator = liftElevatorKite.clone().add(dragElevatorKite)
+
+      // rudder
+      var velRudderKite = rudderPositionKite.clone().cross(angularVelocity).multiplyScalar(-1)
+      var apRudderKite = apKiteWorld.clone().applyQuaternion(kite.getWorldQuaternion().conjugate()).sub(velRudderKite)
+      var dragRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.y, apRudderKite.z ).normalize()
+      var liftRudderKiteUnit = new THREE.Vector3( 0, apRudderKite.z, -apRudderKite.y ).normalize()
+
+      var apRudder = apRudderKite.clone().applyQuaternion(rudder.quaternion.clone().conjugate()).setComponent(2,0)
+      var apRudderSquare = apRudder.lengthSq()
+      var alfaRudder = Math.atan2(apRudder.y, apRudder.x)
+
+
+      var liftRudderKite = liftRudderKiteUnit.clone().multiplyScalar( 1/2 * rho * apRudderSquare * rudderArea * clSym(alfaRudder) )
+      var dragRudderKite = dragRudderKiteUnit.clone().multiplyScalar( 1/2 * rho * apRudderSquare * rudderArea * cdSym(alfaRudder) )
+
+      var totalForceRudder = liftRudderKite.clone().add(dragRudderKite)
+
+      // var elevatorDragWorld = dragElevatorKite.clone().applyQuaternion(kite.getWorldQuaternion())
+      // var elevatorLiftWorld = liftElevatorKite.clone().applyQuaternion(kite.getWorldQuaternion())
+
+      arrowHelperLift.setDirection( wingLift.clone().normalize() )
+      arrowHelperDrag.setDirection( wingDrag.clone().normalize() )
+      arrowHelperLiftSide.setDirection( wingSideLift.clone().normalize() )
+      arrowHelperDragSide.setDirection( wingSideDrag.clone().normalize() )
+      arrowHelperElevator.setDirection( apElevatorKite.clone().normalize() )
+      // arrowHelperElevator.setDirection( elevatorTotal.clone().normalize() )
+
+      arrowHelperDrag.setLength( wingDrag.length() )
+      arrowHelperLift.setLength( wingLift.length() )
+      arrowHelperDragSide.setLength( wingSideDrag.length() )
+      arrowHelperLiftSide.setLength( wingSideLift.length() )
+      arrowHelperElevator.setLength( apElevatorKite.length() )
+      // arrowHelperElevator.setLength( elevatorTotal.length() )
+
+      // document.getElementById('info').innerHTML = "apparent wind speed : " + apKiteWorld.length()
+      document.getElementById('info').innerHTML = "alfa wing: " + Math.round(alfaWing * 180 / Math.PI) + "<br />"
+      document.getElementById('info').innerHTML += "alfa vertical wing : " + Math.round(alfaVWing * 180 / Math.PI)
+
+      var momentElevator = elevatorPositionKite.clone().cross(totalForceElevator)
+      var momentRudder = rudderPositionKite.clone().cross(totalForceRudder)
+
+      var angularAcceleration = momentElevator.clone().add(momentRudder).applyMatrix3(Jinv)
+
+      angularVelocity.add(angularAcceleration.multiplyScalar(dt))
+
+      kite.rotateOnAxis( angularVelocity.clone().normalize(), angularVelocity.length() * dt )
+    }
+
+    var lastTime, animFrame
+
+    function render(ms) {
+      // we get passed a timestamp in milliseconds
+      // we use it to determine how much time has passed since the last call
+      if (lastTime) {
+        update((ms-lastTime)/1000) // call update and pass delta time in seconds
+      }
+
+      lastTime = ms
+      animFrame = requestAnimationFrame(render)
+      renderer.render( scene, camera );
+
+    }
+
+    render()
+
+
+
+
+  </script>
+
+
+</body>
+</html>
