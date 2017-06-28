@@ -20,7 +20,8 @@ var watchedBrowserify = watchify(browserify({
 
 gulp.task("copy-html", function () {
     return gulp.src(paths.pages)
-        .pipe(gulp.dest("docs"));
+        .pipe(gulp.dest("docs"))
+        .pipe(livereload())
 });
 
 gulp.task("live-reload-listen", function() {
@@ -32,9 +33,12 @@ function bundle() {
         .bundle()
         .pipe(source('bundle.js'))
         .pipe(gulp.dest("docs"))
-        .pipe(livereload());
+        .pipe(livereload())
 }
 
-gulp.task("default", ["copy-html", "live-reload-listen"], bundle);
+gulp.task("default", ["copy-html", "live-reload-listen"], function() {
+    gulp.watch(paths.pages, ['copy-html']);
+    bundle()
+});
 watchedBrowserify.on("update", bundle);
 watchedBrowserify.on("log", gutil.log);
