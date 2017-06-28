@@ -1,11 +1,36 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <meta charset="UTF-8" />
-        <title>Hello World!</title>
-    </head>
-    <body>
-        <p id="greeting">Loading ...</p>
-        <script src="bundle.js"></script>
-    </body>
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Kitesim (kitex.tech)</title>
+    <style>
+        body {
+            margin: 0;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: left;
+            z-index: 100;
+            display: block;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="info">Description</div>
+
+    <script src="bundle.js"></script>
+
+</body>
+
 </html>
