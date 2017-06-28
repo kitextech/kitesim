@@ -208,9 +208,9 @@ export class Kite {
     }   
 
     // update kite tether and position
-    var accelerationKite = FKite.divideScalar(this.mass + externalMass).add(C.GRAVITY)
-    this.velocity.add(accelerationKite.multiplyScalar(dt))
-    this.obj.position.add(this.velocity.clone().multiplyScalar(dt))
+    // var accelerationKite = FKite.divideScalar(this.mass + externalMass).add(C.GRAVITY)
+    // this.velocity.add(accelerationKite.multiplyScalar(dt))
+    // this.obj.position.add(this.velocity.clone().multiplyScalar(dt))
   }
 
   createWing(prop: WingProperties) {
