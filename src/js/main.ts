@@ -9,13 +9,14 @@ import { PathFollow, PointOnSphere } from './pathFollow'
 import * as OrbitControlsLibrary from 'three-orbit-controls'
 let OrbitControls = OrbitControlsLibrary(THREE)
 
-var scene = new THREE.Scene();
-var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+let scene = new THREE.Scene();
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 
-var renderer = new THREE.WebGLRenderer();
+let renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// Orbiting controls in using mouse/trackpad
 let controls:THREE.OrbitControls = new OrbitControls(camera)
 controls.enableKeys = false
 camera.position.x = -20;
@@ -23,69 +24,70 @@ camera.position.y = 5;
 camera.position.z = 2;
 controls.update()
 
+// Scene light
 setupLights()
 
-var kite = new Kite(kiteProp)
-
+// Kite 
+let kite = new Kite(kiteProp)
 kite.obj.add(new THREE.AxisHelper(5))
 kite.obj.rotateX(Math.PI / 2 )
 positionKiteAtTheEndOfTether(tetherProperties)
-
 scene.add(kite.obj)
 
-var tether = new Tether(tetherProperties, kite.getAttachmentPointsState())
-tether.renderObjects.forEach(mesh => {
-    scene.add( mesh )
-})
+// Tether 
+let tether = new Tether(tetherProperties, kite.getAttachmentPointsState())
+tether.renderObjects.forEach(mesh => { scene.add( mesh ) })
 
-// Helpers
+// Pathfollowing 
+let pathFollow = new PathFollow( new PointOnSphere(0, 20), 20, 40, kite.rudder, scene)
+
+// Visual helpers
 let helper = new THREE.GridHelper(25, 25)
 helper.setColors(0x0000ff, 0x808080)
 scene.add(new THREE.AxisHelper(10))
 scene.add(helper)
     
+// start rendering scene and setup callback for each frame
 let lastTime
 render(null) // start 
 
-let pathFollow = new PathFollow( new PointOnSphere(0, 20), 20, 40, kite.rudder, scene)
-
-function update(dt) {
-
-    dt = dt // realtime
-    dt = Math.min(dt, 0.03) // max timestep of 0.03 seconds
-
-    detectUserInput(dt)
-
-    var subFrameIterations = 20
-    let dtSub = dt/subFrameIterations
-
-    for (var k = 0; k < subFrameIterations; k++) {
-
-        tether.updateTetherPositionAndForces(dtSub)
-        kite.updateKitePositionAndForces(dtSub, tether.kiteTetherForces(), tether.getKiteTetherMass())
-        tether.updateKiteTetherState(kite.getAttachmentPointsState())
-    }
-
-    pathFollow.update(kite.obj.position.clone(), kite.velocity.clone())
-
-    // UPDATE UI
-    // Set the position of the boxes showing the tether.
-    tether.renderObjects.forEach( (mesh, i) => {
-        mesh.position.set(tether.pos[i].x, tether.pos[i].y, tether.pos[i].z)
-    });
-}
-
 function render(ms) {
     // we get passed a timestamp in milliseconds
-    // we use it to determine how much time has passed since the last call
     if (lastTime) {
         update((ms-lastTime)/1000) // call update and pass delta time in seconds
     }
 
     lastTime = ms
     requestAnimationFrame(render)
-    renderer.render( scene, camera );
+    renderer.render( scene, camera )
+}
 
+// Main update loop which is run on every frame 
+function update(dt) {
+
+    dt = dt // can be used for adjusting the animation speed
+    dt = Math.min(dt, 0.03) // max timestep of 0.03 seconds
+
+    detectUserInput(dt) // detect any keypresses and update accordinly
+
+    // increase the amount of numerical integrations for each frame. 
+    // Especially increase the stability of the tether calculations
+    var subFrameIterations = 20 
+    let dtSub = dt/subFrameIterations
+
+    for (var k = 0; k < subFrameIterations; k++) {
+        tether.updateTetherPositionAndForces(dtSub)
+        kite.updateKitePositionAndForces(dtSub, tether.kiteTetherForces(), tether.getKiteTetherMass())
+        tether.updateKiteTetherState(kite.getAttachmentPointsState())
+    }
+
+    // the pathfllowing algorithm will adjust the rudder give the input. It's currently turned on by toggleing 'q'
+    pathFollow.update(kite.obj.position.clone(), kite.velocity.clone())
+
+    // Set the position of the boxes showing the tether.
+    tether.renderObjects.forEach( (mesh, i) => {
+        mesh.position.set(tether.pos[i].x, tether.pos[i].y, tether.pos[i].z)
+    })
 }
 
 function setupLights() {
@@ -116,7 +118,6 @@ function detectUserInput(dt) {
     if (Key.isDown(Key.Z)) kite.adjustThrustBy( thrustRate * dt)
 }
 
-// kite
 function positionKiteAtTheEndOfTether(tp: TetherProperties) {
     let dx = Math.sqrt(tp.kiteTLength*tp.kiteTLength - kite.tetherAttachmentPoint1.y*kite.tetherAttachmentPoint1.y)
     kite.obj.position.add( new THREE.Vector3(tp.totalLength + dx, 0, 0) )
