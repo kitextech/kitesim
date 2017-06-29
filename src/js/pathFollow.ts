@@ -15,6 +15,7 @@ export class PathFollow {
     quaternion: Quaternion
     qConjugate: Quaternion
     box: Mesh
+    angleError?: number
 
     constructor(tc: PointOnSphere, radius: number, readonly N: number, readonly rudder: AeroSurfaceRotating, readonly scene: Scene) {
         this.index = Math.floor(N / 2)
@@ -70,11 +71,11 @@ export class PathFollow {
         let vectorToTarget = this.points[this.index].clone().sub(posLocal2D)
         let angleToPoint = Math.atan2(vectorToTarget.x, vectorToTarget.y)
 
-        let angleError = ((currentHeading - angleToPoint) * 180 / Math.PI) % 360
-        if (angleError < -180) angleError += 360
-        if (angleError > 180) angleError -= 360
+        this.angleError = ((currentHeading - angleToPoint) * 180 / Math.PI) % 360
+        if (this.angleError < -180) this.angleError += 360
+        if (this.angleError > 180) this.angleError -= 360
 
-        let deltaAngle = Math.min(Math.max(-angleError / 8, -12), 12) - 8
+        let deltaAngle = Math.min(Math.max(-this.angleError / 8, -12), 12) - 8
 
         if (this.on) {
             this.rudder.mesh.setRotationFromEuler(new Euler(0, - Math.PI / 2, deltaAngle / 180 * Math.PI), 'XYZ')

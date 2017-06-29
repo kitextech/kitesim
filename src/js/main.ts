@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { Vector3 } from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
-import { Key } from './util'
+import { Key, updateDescriptionUI, Pause } from './util'
 import { Tether, tetherProperties, TetherProperties } from './tether'
 import { PathFollow, PointOnSphere } from './pathFollow'
 
@@ -39,7 +39,7 @@ let tether = new Tether(tetherProperties, kite.getAttachmentPointsState())
 tether.renderObjects.forEach(mesh => { scene.add( mesh ) })
 
 // Pathfollowing 
-let pathFollow = new PathFollow( new PointOnSphere(0, 20), 20, 40, kite.rudder, scene)
+let pathFollow = new PathFollow( new PointOnSphere(0, 25), 20, 40, kite.rudder, scene)
 
 // Visual helpers
 let helper = new THREE.GridHelper(25, 25)
@@ -47,6 +47,9 @@ helper.setColors(0x0000ff, 0x808080)
 scene.add(new THREE.AxisHelper(10))
 scene.add(helper)
     
+// Pause
+let pause = new Pause()
+
 // start rendering scene and setup callback for each frame
 let lastTime
 render(null) // start 
@@ -64,6 +67,7 @@ function render(ms) {
 
 // Main update loop which is run on every frame 
 function update(dt) {
+    if (pause.on) return
 
     dt = dt // can be used for adjusting the animation speed
     dt = Math.min(dt, 0.03) // max timestep of 0.03 seconds
@@ -88,6 +92,8 @@ function update(dt) {
     tether.renderObjects.forEach( (mesh, i) => {
         mesh.position.set(tether.pos[i].x, tether.pos[i].y, tether.pos[i].z)
     })
+
+    updateDescriptionUI(kite, pathFollow)
 }
 
 function setupLights() {

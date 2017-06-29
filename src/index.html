@@ -14,20 +14,44 @@
             height: 100%
         }
 
-        #info {
+        #infoTopLeft {
             position: absolute;
             top: 10px;
             width: 100%;
             text-align: left;
             z-index: 100;
             display: block;
-            color: green;
+            color: white;
+        }
+
+        #infoTopRight {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: right;
+            z-index: 100;
+            display: block;
+            color: white;
         }
     </style>
 </head>
 
 <body>
-    <div id="info">Description</div>
+    <div id="infoTopLeft"><pre><span id='info'>Description</span></pre></div>
+    <div id="infoTopRight">
+        <pre>
+        Controls:
+        Rotate view: Left mouse drag/ touch drag
+        Pan: Right mouse drag/ three finder drag
+        Zoon: Mouse zoom / two finder drag
+
+        Activate pathfollowing: q
+        Rudder angle: left / right arrow
+        Elevator angle: up / down arrow
+        Thrust: a / z
+        Pause: p
+        </pre>
+    </div>
 
     <script src="bundle.js"></script>
 
