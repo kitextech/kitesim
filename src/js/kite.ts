@@ -7,6 +7,13 @@ export class AttachmentPointState {
   constructor(readonly pos: Vector3, readonly vel: Vector3) { }
 }
 
+export interface KiteTetherForces {
+  spring1: Vector3
+  spring2: Vector3
+  drag1: Vector3
+  drag2: Vector3
+}
+
 export interface WingProperties {
     cord: number
     thickness: number
@@ -94,9 +101,10 @@ addAreaCalculation(kiteProp.vWing, 2)
 addAreaCalculation(kiteProp.rudder, 1)
 addAreaCalculation(kiteProp.elevator, 1)
 
-class Force {
+export class Force {
   readonly positionLocal?: Vector3 = null
   constructor(readonly force: Vector3, positionLocal: Vector3 = null) {
+    this.positionLocal = positionLocal
   }
 }
 
@@ -110,13 +118,15 @@ export class Kite {
 
   tetherAttachmentPoint1: Vector3
   tetherAttachmentPoint2: Vector3
-  // elevatorPosition: Vector3
-  // rudderPosition: Vector3
 
   Jinv: Matrix3
   angularVelocity: Vector3
   velocity: Vector3
   mass: number
+  
+  thrust = new Vector3(0, 0, -25) // N
+  thrustMax = new Vector3( 0, 0, -35) // N
+  thrustMin = new Vector3( 0, 0, 0) // N
 
   constructor(prop: KiteProperties) {
     this.obj = new Object3D(); //create an empty container
@@ -158,25 +168,30 @@ export class Kite {
     this.velocity = new Vector3( 0, 0, 0)
   }
 
-  updateKitePositionAndForces(dt, externalForces: Force[], externalMass: number) {
+  updateKitePositionAndForces(dt, ktf: KiteTetherForces, externalMass: number) {
+    let forces = [
+      new Force(ktf.spring1, this.tetherAttachmentPoint1),
+      new Force(ktf.spring2, this.tetherAttachmentPoint2),
+      new Force(ktf.drag1),
+      new Force(ktf.drag2)
+    ]
+    this.updateKitePositionAndForcesGeneral(dt, forces, externalMass)
+  }
+
+  updateKitePositionAndForcesGeneral(dt, externalForces: Force[], externalMass: number) {
     //
     // KITE AERODYNAMICS
     //
-
-    // var kiteTF = mTether.kiteTetherForces()
-
     let apKiteWorld = C.WIND.clone().sub(this.velocity)
-    var apKiteKite = apKiteWorld.clone().applyQuaternion(this.obj.getWorldQuaternion().conjugate())
-    // var thrustWorld = thrust.clone().applyQuaternion(this.obj.getWorldQuaternion())
+    let apKiteKite = apKiteWorld.clone().applyQuaternion(this.obj.getWorldQuaternion().conjugate())
 
     this.wing.update(apKiteWorld, apKiteKite)
     this.vWing.update(apKiteWorld, apKiteKite)
-
     this.elevator.update(apKiteWorld, apKiteKite, this)
     this.rudder.update(apKiteWorld, apKiteKite, this)
 
     // Total aero forces
-    var aeroForcesKite = new Vector3() 
+    let aeroForcesKite = new Vector3() 
       .add(this.wing.lift)
       .add(this.wing.drag)
       .add(this.vWing.lift)
@@ -185,8 +200,6 @@ export class Kite {
       .add(this.rudder.totalAero)
 
     // moments and rotation of kite
-    // tap1SpringForceKite = kiteTF.spring1.clone().applyQuaternion( this.obj.quaternion.clone().conjugate() )
-    // tap2SpringForceKite = kiteTF.spring2.clone().applyQuaternion( this.obj.quaternion.clone().conjugate() )
     var momentsKite = this.elevator.prop.position.clone().cross(this.elevator.totalAero)
       .add(this.rudder.prop.position.clone().cross(this.rudder.totalAero))
 
@@ -195,26 +208,28 @@ export class Kite {
         let forceLocal = force.force.clone().applyQuaternion( this.obj.quaternion.clone().conjugate() )
         momentsKite.add( force.positionLocal.clone().cross(forceLocal) )
       }
-    }   
-    // .add(this.tetherAttachmentPoint1.clone().cross( tap1SpringForceKite ) )
-    // .add(this.tetherAttachmentPoint2.clone().cross( tap2SpringForceKite ) )
-
+    }
+    
     var angularAcceleration = momentsKite.clone().applyMatrix3(this.Jinv)//.setComponent(0, 0).setComponent(1, 0)
     this.angularVelocity.add(angularAcceleration.multiplyScalar(dt))
 
     this.obj.rotateOnAxis( this.angularVelocity.clone().normalize(), this.angularVelocity.length() * dt )
 
-    // tether plus kite forces
-    var FKite = aeroForcesKite.clone().applyQuaternion(this.obj.quaternion)
+    // update kite tether and position
+    let FKite = aeroForcesKite.clone().applyQuaternion(this.obj.quaternion)
+      .add(this.thrust.clone().applyQuaternion(this.obj.quaternion))
     
     for (let force of externalForces) {
       FKite.add(force.force)
     }   
 
-    // update kite tether and position
-    // var accelerationKite = FKite.divideScalar(this.mass + externalMass).add(C.GRAVITY)
-    // this.velocity.add(accelerationKite.multiplyScalar(dt))
-    // this.obj.position.add(this.velocity.clone().multiplyScalar(dt))
+    let accelerationKite = FKite.divideScalar(this.mass + externalMass).add(C.GRAVITY)
+    this.velocity.add(accelerationKite.multiplyScalar(dt))
+    this.obj.position.add(this.velocity.clone().multiplyScalar(dt))
+  }
+
+  adjustThrustBy(delta: number) {
+    this.thrust.add( new Vector3(0, 0, delta) ).max(this.thrustMax).min(this.thrustMin)
   }
 
   getAttachmentPointsState(): AttachmentPointState[] {

@@ -4,21 +4,16 @@ import { Kite, WingProperties } from './kite'
 import * as C from "./Constants" 
 
 export abstract class AeroSurfaceBase {
-  // readonly wing: Mesh
-  // area: number
-  readonly liftUnitFunc: (Vector3) => Vector3
-  readonly dragUnitFunc: (Vector3) => Vector3
   cl: (number) => number
   cd: (number) => number
   alfa?: number
   lift?: Vector3
   drag?: Vector3
 
-  constructor( readonly mesh: Mesh, readonly prop: WingProperties, liftUnitFunc, dragUnitFunc) {
-    // this.wing = wing
-    // this.area = area
-    this.liftUnitFunc = liftUnitFunc
-    this.dragUnitFunc = dragUnitFunc
+  constructor( readonly mesh: Mesh, 
+      readonly prop: WingProperties, 
+      readonly liftUnitFunc: (Vector3) => Vector3, 
+      readonly dragUnitFunc: (Vector3) => Vector3) {
     this.cl = prop.sym ? clSym : clAsym
     this.cd = prop.sym ? cdSym : cdAsym
   }
