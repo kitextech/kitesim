@@ -3,6 +3,10 @@ import { Object3D, Mesh, Vector3, Matrix3, CylinderGeometry, MeshLambertMaterial
 import { AeroSurface, AeroSurfaceRotating } from "./AeroSurface"
 import * as C from "./Constants" 
 
+export class AttachmentPointState {
+  constructor(readonly pos: Vector3, readonly vel: Vector3) { }
+}
+
 export interface WingProperties {
     cord: number
     thickness: number
@@ -211,6 +215,16 @@ export class Kite {
     // var accelerationKite = FKite.divideScalar(this.mass + externalMass).add(C.GRAVITY)
     // this.velocity.add(accelerationKite.multiplyScalar(dt))
     // this.obj.position.add(this.velocity.clone().multiplyScalar(dt))
+  }
+
+  getAttachmentPointsState(): AttachmentPointState[] {
+    function attactmentPointState(attactmentPoint: Vector3) {
+      return new AttachmentPointState(
+        this.obj.position.clone().add(attactmentPoint.clone().applyQuaternion(this.obj.quaternion)),
+        this.velocity.clone().add(attactmentPoint.clone().cross(this.angularVelocity).multiplyScalar(-1).applyQuaternion(this.obj.quaternion))
+      ) 
+    }
+    return [ attactmentPointState.call(this, this.tetherAttachmentPoint1), attactmentPointState.call(this, this.tetherAttachmentPoint2) ]
   }
 
   createWing(prop: WingProperties) {
