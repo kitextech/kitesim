@@ -4,6 +4,7 @@ import { Vector3 } from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
 import { Key } from './util'
 import { Tether, tetherProperties, TetherProperties } from './tether'
+import { PathFollow, PointOnSphere } from './pathFollow'
 
 import * as OrbitControlsLibrary from 'three-orbit-controls'
 let OrbitControls = OrbitControlsLibrary(THREE)
@@ -46,6 +47,8 @@ scene.add(helper)
 let lastTime
 render(null) // start 
 
+let pathFollow = new PathFollow( new PointOnSphere(0, 20), 20, 40, kite.rudder, scene)
+
 function update(dt) {
 
     dt = dt // realtime
@@ -63,7 +66,7 @@ function update(dt) {
         tether.updateKiteTetherState(kite.getAttachmentPointsState())
     }
 
-    // pf.update(kite.obj.position.clone(), kite.velocity.clone())
+    pathFollow.update(kite.obj.position.clone(), kite.velocity.clone())
 
     // UPDATE UI
     // Set the position of the boxes showing the tether.
