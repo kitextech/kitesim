@@ -1,7 +1,7 @@
 ## What?
 This is a real time dynamic model of a tethered kite which can be useful for visualisation, parameter estimation, flight controller development and so forth for airborne wind turbines. 
 
-![Kitesim rendering of kitex SuperQ prototype](http://kitex.tech/kitesim/images/kitesim.png)
+![Kitesim rendering of kitex SuperQ prototype](/readmeImages/kitesim.png?raw=true)
 
 ## install & use
 
