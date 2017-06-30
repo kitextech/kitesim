@@ -1,5 +1,5 @@
 import { AttachmentPointState, Force, KiteTetherForces } from "./kite"
-import { Vector3, Mesh, BoxGeometry, MeshLambertMaterial, Scene } from 'three'
+import { Vector3, Mesh, BoxGeometry, MeshLambertMaterial, Scene, Line, LineBasicMaterial, Geometry } from 'three'
 import * as C from "./Constants"
 
 export interface TetherProperties {
@@ -48,6 +48,12 @@ export class Tether {
   KIndex1: number
   KIndex2: number
 
+  lineGeometryMain: Geometry
+  lineGeometryKite: Geometry
+
+  lineMain: Line
+  lineKite: Line
+
   // tp: TetherProperties
 
   constructor(readonly tp: TetherProperties, apState: AttachmentPointState[]) {
@@ -59,6 +65,7 @@ export class Tether {
     this.constructMainTether(tp)
     this.constructKiteTether(tp)
     this.updateKiteTetherState(apState)
+    this.constructLineGeometry()
   }
 
   // main tether
@@ -71,7 +78,7 @@ export class Tether {
       this.mass.push(this.segmentLength * Math.PI * Math.pow(tp.diameter / 2, 2) * tp.density)
 
       this.renderObjects.push(new Mesh(
-        new BoxGeometry(1, 1, 1),
+        new BoxGeometry(0.2, 0.2, 0.2),
         new MeshLambertMaterial({ color: 0xff0000 })
       ))
     }
@@ -83,6 +90,27 @@ export class Tether {
       this.tSegmentLengthDefault.push(tp.kiteTLength)
       this.mass.push(tp.kiteTLength * Math.PI * Math.pow(tp.diameter / 2, 2) * tp.density)
     }
+  }
+
+  constructLineGeometry() {
+    this.lineGeometryMain = new Geometry();
+    this.lineGeometryKite = new Geometry();
+    
+    this.lineGeometryMain.vertices.push( new Vector3(0,0,0) )
+    for (var i = 0; i <= this.indexEnd; i++) {
+      this.lineGeometryMain.vertices.push( this.pos[i] )
+    }
+
+    this.lineGeometryKite.vertices.push(
+      this.pos[this.KIndex1],
+      this.pos[this.indexEnd],
+      this.pos[this.KIndex2]
+    )
+
+    // line
+    let material = new LineBasicMaterial({ color: 0x0000ff })
+    this.lineMain = new Line( this.lineGeometryMain, material )
+    this.lineKite = new Line( this.lineGeometryKite, material );
   }
 
   updateKiteTetherState(apState: AttachmentPointState[]) { // use local variables instead
@@ -160,5 +188,17 @@ export class Tether {
 
   getKiteTetherMass(): number {
     return this.mass[this.KIndex1] + this.mass[this.KIndex2]
+  }
+
+  updateLinePosition() {
+    for (var i = 0; i <= this.indexEnd; i++) {
+      this.lineGeometryMain.vertices[i+1] = this.pos[i]
+    }
+    this.lineGeometryMain.verticesNeedUpdate = true
+
+    this.lineGeometryKite.vertices[0] = this.pos[this.KIndex1]
+    this.lineGeometryKite.vertices[1] = this.pos[this.indexEnd]
+    this.lineGeometryKite.vertices[2] = this.pos[this.KIndex2]
+    this.lineGeometryKite.verticesNeedUpdate = true
   }
 }

@@ -29,7 +29,7 @@ setupLights()
 
 // Kite 
 let kite = new Kite(kiteProp)
-kite.obj.add(new THREE.AxisHelper(5))
+kite.obj.add(new THREE.AxisHelper(2))
 kite.obj.rotateX(Math.PI / 2 )
 positionKiteAtTheEndOfTether(tetherProperties)
 scene.add(kite.obj)
@@ -37,6 +37,8 @@ scene.add(kite.obj)
 // Tether 
 let tether = new Tether(tetherProperties, kite.getAttachmentPointsState())
 tether.renderObjects.forEach(mesh => { scene.add( mesh ) })
+scene.add( tether.lineMain )
+scene.add( tether.lineKite )
 
 // Pathfollowing 
 let pathFollow = new PathFollow( new PointOnSphere(0, 25), 20, 40, kite.rudder, scene)
@@ -44,9 +46,12 @@ let pathFollow = new PathFollow( new PointOnSphere(0, 25), 20, 40, kite.rudder, 
 // Visual helpers
 let helper = new THREE.GridHelper(25, 25)
 helper.setColors(0x0000ff, 0x808080)
-scene.add(new THREE.AxisHelper(10))
+scene.add(new THREE.AxisHelper(1))
 scene.add(helper)
-    
+
+
+
+
 // Pause
 let pause = new Pause()
 
@@ -92,6 +97,7 @@ function update(dt) {
     tether.renderObjects.forEach( (mesh, i) => {
         mesh.position.set(tether.pos[i].x, tether.pos[i].y, tether.pos[i].z)
     })
+    tether.updateLinePosition()
 
     updateDescriptionUI(kite, pathFollow)
 }
