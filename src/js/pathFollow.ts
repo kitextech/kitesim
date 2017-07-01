@@ -9,8 +9,6 @@ export class PathFollow {
     index: number
     lookAheadDistance: number
     points: Vector2[] = []
-    // N: number
-    // rudder: AeroSurfaceRotating
     on: boolean = false
     quaternion: Quaternion
     qConjugate: Quaternion

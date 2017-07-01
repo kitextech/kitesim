@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { Vector3 } from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
-import { Key, updateDescriptionUI, Pause } from './util'
+import { Key, updateDescriptionUI, Pause, PID } from './util'
 import { Tether, tetherProperties, TetherProperties } from './tether'
 import { PathFollow, PointOnSphere } from './pathFollow'
 
@@ -49,7 +49,9 @@ helper.setColors(0x0000ff, 0x808080)
 scene.add(new THREE.AxisHelper(1))
 scene.add(helper)
 
-
+// velocity PID
+let velocityPID = new PID(0.5, 0, 0.01, 100)
+let velocitySp = 25
 
 
 // Pause
@@ -92,6 +94,10 @@ function update(dt) {
 
     // the pathfllowing algorithm will adjust the rudder give the input. It's currently turned on by toggleing 'q'
     pathFollow.update(kite.obj.position.clone(), kite.velocity.clone())
+
+    // update thrust setting based on the velocityPID
+    let pidresult = velocityPID.update( velocitySp - kite.velocity.length() , dt)
+    kite.adjustThrustBy( pidresult )
 
     // Set the position of the boxes showing the tether.
     tether.renderObjects.forEach( (mesh, i) => {

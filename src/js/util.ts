@@ -83,3 +83,26 @@ export class Pause {
       }, false);
   }
 }
+
+export class PID {
+
+  lastError: number = 0
+  integrator: number = 0
+
+  constructor(readonly p: number, readonly i: number, readonly d: number, readonly iAbsMax: number){
+  }
+
+  update(error: number, dt: number): number {
+    
+    this.integrator += error * dt
+    this.integrator = Math.min( Math.max( this.integrator, -this.iAbsMax ), this.iAbsMax)
+
+    let adjustment = this.p * error + 
+      this.i * this.integrator +
+      this.d * (this.lastError - error) / dt
+
+    this.lastError = error
+
+    return adjustment
+  }
+}

@@ -126,7 +126,7 @@ export class Kite {
   
   thrust = new Vector3(0, 0, -25) // N
   thrustMax = new Vector3( 0, 0, -35) // N
-  thrustMin = new Vector3( 0, 0, 0) // N
+  thrustMin = new Vector3( 0, 0, 35) // N
 
   constructor(prop: KiteProperties) {
     this.obj = new Object3D(); //create an empty container
@@ -229,7 +229,7 @@ export class Kite {
   }
 
   adjustThrustBy(delta: number) {
-    this.thrust.add( new Vector3(0, 0, delta) ).max(this.thrustMax).min(this.thrustMin)
+    this.thrust.add( new Vector3(0, 0, -delta) ).max(this.thrustMax).min(this.thrustMin)
   }
 
   getAttachmentPointsState(): AttachmentPointState[] {
