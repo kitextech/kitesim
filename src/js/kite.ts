@@ -124,7 +124,7 @@ export class Kite {
   velocity: Vector3
   mass: number
   
-  thrust = new Vector3(0, 0, -25) // N
+  thrust = new Vector3(0, 0, -18) // N
   thrustMax = new Vector3( 0, 0, -35) // N
   thrustMin = new Vector3( 0, 0, 35) // N
 
@@ -168,17 +168,17 @@ export class Kite {
     this.velocity = new Vector3( 0, 0, 0)
   }
 
-  updateKitePositionAndForces(dt, ktf: KiteTetherForces, externalMass: number) {
+  updateKitePositionAndForces(dt, ktf: KiteTetherForces, externalMass: number, externalMoment: Vector3) {
     let forces = [
       new Force(ktf.spring1, this.tetherAttachmentPoint1),
       new Force(ktf.spring2, this.tetherAttachmentPoint2),
       new Force(ktf.drag1),
       new Force(ktf.drag2)
     ]
-    this.updateKitePositionAndForcesGeneral(dt, forces, externalMass)
+    this.updateKitePositionAndForcesGeneral(dt, forces, externalMass, externalMoment)
   }
 
-  updateKitePositionAndForcesGeneral(dt, externalForces: Force[], externalMass: number) {
+  updateKitePositionAndForcesGeneral(dt, externalForces: Force[], externalMass: number, externalMoment: Vector3) {
     //
     // KITE AERODYNAMICS
     //
@@ -202,6 +202,7 @@ export class Kite {
     // moments and rotation of kite
     var momentsKite = this.elevator.prop.position.clone().cross(this.elevator.totalAero)
       .add(this.rudder.prop.position.clone().cross(this.rudder.totalAero))
+      .add(externalMoment)
 
     for (let force of externalForces) {
       if (force.positionLocal) {

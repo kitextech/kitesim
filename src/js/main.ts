@@ -1,6 +1,6 @@
 // three.js
 import * as THREE from 'three'
-import { Vector3 } from 'three'
+import { Vector3, Quaternion, Euler } from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
 import { Key, updateDescriptionUI, Pause, PID } from './util'
 import { Tether, tetherProperties, TetherProperties } from './tether'
@@ -8,6 +8,8 @@ import { PathFollow, PointOnSphere } from './pathFollow'
 
 import * as OrbitControlsLibrary from 'three-orbit-controls'
 let OrbitControls = OrbitControlsLibrary(THREE)
+
+import { mcAttitude } from './mcAttitude'
 
 let scene = new THREE.Scene();
 let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -33,6 +35,10 @@ kite.obj.add(new THREE.AxisHelper(2))
 kite.obj.rotateX(Math.PI / 2 )
 positionKiteAtTheEndOfTether(tetherProperties)
 scene.add(kite.obj)
+// visual helper on kite
+let momentArrow = new THREE.ArrowHelper( new Vector3(1,0,0), new Vector3(0,0,0), 1, 0xffff00)
+kite.obj.add(momentArrow)
+
 
 // Tether 
 let tether = new Tether(tetherProperties, kite.getAttachmentPointsState())
@@ -53,6 +59,7 @@ scene.add(helper)
 let velocityPID = new PID(0.5, 0, 0.01, 100)
 let velocitySp = 25
 
+// attitude controller
 
 // Pause
 let pause = new Pause()
@@ -88,16 +95,31 @@ function update(dt) {
 
     for (var k = 0; k < subFrameIterations; k++) {
         tether.updateTetherPositionAndForces(dtSub)
-        kite.updateKitePositionAndForces(dtSub, tether.kiteTetherForces(), tether.getKiteTetherMass())
+
+        // moment MC
+        // let moment = mcAttitude.getMomentsRates(kite.angularVelocity, new Vector3(0,0,0), dtSub).multiplyScalar(-30)
+        
+        var moment = mcAttitude.getMomentAttitude(
+            kite.obj.quaternion, 
+            new Quaternion(1, 0, 0, 0).setFromEuler( new Euler( Math.PI/2, 0, 0, 'XYZ' ) ), 
+            kite.angularVelocity, dtSub)
+            .multiplyScalar(-1)
+                    
+        // moment = moment.max(new Vector3(-6,-6, -1)).min( new Vector3(6, 6, 1))
+
+        kite.updateKitePositionAndForces(dtSub, tether.kiteTetherForces(), tether.getKiteTetherMass(), moment)
         tether.updateKiteTetherState(kite.getAttachmentPointsState())
     }
+
+    momentArrow.setDirection(moment.clone().normalize())
+    momentArrow.setLength(moment.length())
 
     // the pathfllowing algorithm will adjust the rudder give the input. It's currently turned on by toggleing 'q'
     pathFollow.update(kite.obj.position.clone(), kite.velocity.clone())
 
-    // update thrust setting based on the velocityPID
-    let pidresult = velocityPID.update( velocitySp - kite.velocity.length() , dt)
-    kite.adjustThrustBy( pidresult )
+    // // update thrust setting based on the velocityPID
+    // let pidresult = velocityPID.update( velocitySp - kite.velocity.length() , dt)
+    // kite.adjustThrustBy( pidresult )
 
     // Set the position of the boxes showing the tether.
     tether.renderObjects.forEach( (mesh, i) => {
