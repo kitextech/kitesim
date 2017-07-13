@@ -9,8 +9,9 @@ import { PathFollow } from './pathFollow'
 import * as OrbitControlsLibrary from 'three-orbit-controls'
 let OrbitControls = OrbitControlsLibrary(THREE)
 
-import { mcAttitude } from './mcAttitude'
-import { mcPosition } from './mcPosition'
+import { mcAttitude, MCAttitude } from './mcAttitude'
+import { mcPosition, MCPosition } from './mcPosition'
+import { VTOL } from './vtol'
 
 let scene = new THREE.Scene();
 let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -47,7 +48,121 @@ scene.add( tether.lineMain )
 scene.add( tether.lineKite )
 
 // Pathfollowing 
-let pathFollow = new PathFollow( new PointOnSphere(30, 10), 20, 40, kite.rudder, scene)
+enum FlightMode {
+    Position,
+    TransitionForward,
+    PathFollow,
+    TransitionBackward
+}
+
+class FlightModeController {
+    pf: PathFollow
+    mcAttitude: MCAttitude = mcAttitude
+    mcPosition: MCPosition = mcPosition
+    vtol: VTOL = new VTOL()
+
+    mode: FlightMode = FlightMode.Position 
+
+    constructor(readonly kite: Kite) {
+        this.pf = new PathFollow( new PointOnSphere(0, 20), 20, 40, this.kite.rudder, scene)
+    }
+
+
+    update(dt: number) {
+        this.vtol.updateRatio(dt)
+    }
+
+    getMoment(dt: number) {
+        var moment = new Vector3()
+
+        switch (this.mode) {
+            case FlightMode.Position:
+                var attitudeSP = this.mcPosition.getAttiude( new PointOnSphere(30,10), this.kite.velocity, this.kite.obj.position, dt)
+                moment = mcAttitude.getMomentAttitude( this.kite.obj.quaternion, attitudeSP, this.kite.angularVelocity, dt)
+                break;
+
+            case FlightMode.TransitionForward:
+                var attitudeSP = this.vtol.getAttitudeForward(this.kite.obj.quaternion, this.kite.obj.position)
+                moment = mcAttitude.getMomentAttitude( this.kite.obj.quaternion, attitudeSP, this.kite.angularVelocity, dt)
+                break;
+
+            case FlightMode.PathFollow:
+                // the pathfllowing algorithm will adjust the rudder give the input. It's currently turned on by toggleing 'q'
+                this.pf.update(this.kite.obj.position.clone(), kite.velocity.clone()) // internally mofified the rudder angle
+
+                break;
+            case FlightMode.TransitionBackward:
+                this.mode = FlightMode.Position
+                break;
+
+            default:
+                break;
+        }
+        
+        // temporary for logging
+        momentArrow.setDirection(moment.clone().normalize())
+        momentArrow.setLength(moment.length()*10)
+
+        return moment.max(new Vector3(-6,-6, -1)).min( new Vector3(6, 6, 1))
+    }
+
+    adjustThrust(dt: number) {
+        switch (this.mode) {
+            case FlightMode.Position:
+                this.kite.setThrust( 
+                    this.mcPosition.getThrust( 
+                        new PointOnSphere(30, 10), 
+                        this.kite.velocity, 
+                        this.kite.obj.position, 
+                        dt ) 
+                    ) 
+                break;
+
+            case FlightMode.TransitionForward:
+                this.kite.setThrust( this.vtol.getThrust() )
+                break;
+
+            case FlightMode.PathFollow:
+                let pidresult = velocityPID.update( velocitySp - kite.velocity.length() , dt)
+                this.kite.adjustThrustBy( pidresult )
+
+                break;
+            case FlightMode.TransitionBackward:
+                this.mode = FlightMode.Position
+                break;
+
+            default:
+                break;
+        }
+
+    }
+
+    toggleMode() {
+        switch (this.mode) {
+            case FlightMode.Position:
+                this.mode = FlightMode.TransitionForward
+                this.vtol.start(this.kite.obj.quaternion, this.kite.thrust)
+                break;
+            case FlightMode.TransitionForward:
+                this.mode = FlightMode.PathFollow
+                this.pf.start()
+                break;
+            case FlightMode.PathFollow:
+                this.pf.stop()
+                this.mode = FlightMode.TransitionBackward
+                break;
+            case FlightMode.TransitionBackward:
+                this.mode = FlightMode.Position
+                break;
+            default:
+                break;
+        }
+    }
+}
+
+var flightModeController = new FlightModeController(kite)
+setUpListener(81, flightModeController.toggleMode, flightModeController)
+
 
 // Visual helpers
 let helper = new THREE.GridHelper(25, 25)
@@ -56,10 +171,8 @@ scene.add(new THREE.AxisHelper(1))
 scene.add(helper)
 
 // velocity PID
-let velocityPID = new PID(0.5, 0, 0.01, 100)
+let velocityPID = new PID(0.1, 0, 0.01, 100)
 let velocitySp = 25
-
-// attitude controller
 
 // Pause
 let pause = new Pause()
@@ -96,25 +209,14 @@ function update(dt) {
     for (var k = 0; k < subFrameIterations; k++) {
         tether.updateTetherPositionAndForces(dtSub)
 
-        let attitudeSP = mcPosition.getAttiude( new PointOnSphere(30,10), kite.velocity, kite.obj.position, dt)
-        var moment = mcAttitude.getMomentAttitude( kite.obj.quaternion, attitudeSP, kite.angularVelocity, dtSub)
-                    
-        moment = moment.max(new Vector3(-6,-6, -1)).min( new Vector3(6, 6, 1))
+        flightModeController.update(dtSub)
+        let moment = flightModeController.getMoment(dtSub)
                     
         kite.updateKitePositionAndForces(dtSub, tether.kiteTetherForces(), tether.getKiteTetherMass(), moment)
         tether.updateKiteTetherState(kite.getAttachmentPointsState())
     }
 
-    momentArrow.setDirection(moment.clone().normalize())
-    momentArrow.setLength(moment.length()*10)
-
-    // the pathfllowing algorithm will adjust the rudder give the input. It's currently turned on by toggleing 'q'
-    pathFollow.update(kite.obj.position.clone(), kite.velocity.clone())
-
-    // // update thrust setting based on the velocityPID
-    // let pidresult = velocityPID.update( velocitySp - kite.velocity.length() , dt)
-    // kite.adjustThrustBy( pidresult )
-    kite.setThrust( new Vector3(0, 0, mcPosition.getThrust( new PointOnSphere(30, 10), kite.velocity, kite.obj.position, dt ) ) )
+    flightModeController.adjustThrust(dt)
 
     // Set the position of the boxes showing the tether.
     tether.renderObjects.forEach( (mesh, i) => {
@@ -122,7 +224,7 @@ function update(dt) {
     })
     tether.updateLinePosition()
 
-    updateDescriptionUI(kite, pathFollow)
+    updateDescriptionUI(kite, flightModeController.pf)
 }
 
 function setupLights() {
@@ -157,3 +259,13 @@ function positionKiteAtTheEndOfTether(tp: TetherProperties) {
     let dx = Math.sqrt(tp.kiteTLength*tp.kiteTLength - kite.tetherAttachmentPoint1.y*kite.tetherAttachmentPoint1.y)
     kite.obj.position.add( new THREE.Vector3(tp.totalLength + dx, 0, 0) )
 }
+
+function setUpListener(keyCode: number, action: () => void, caller: Object) {
+    document.addEventListener('keydown', function (e) {
+        var key = e.keyCode || e.which;
+        if (key === keyCode) { // 81 q
+            action.call(caller)
+        }
+    }, false);
+}
+

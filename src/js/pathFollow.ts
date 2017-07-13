@@ -41,11 +41,9 @@ export class PathFollow {
             new MeshLambertMaterial({ color: 0xffff00 })
         )
         scene.add(this.box)
-
-        this.setUpListener()
     }
 
-    update(position, velocity) {
+    update(position: Vector3, velocity: Vector3) {
 
         // move position in to local coordinate system
         let posLocal3D = position.applyQuaternion(this.qConjugate)
@@ -77,17 +75,19 @@ export class PathFollow {
         }
     }
 
-    toggle() {
+    toggle(): void {
         this.on = !this.on
     }
 
-    setUpListener() {
-        var self = this
-        document.addEventListener('keydown', function (e) {
-            var key = e.keyCode || e.which;
-            if (key === 81) {
-                self.toggle()
-            }
-        }, false);
+    start(): void {
+        this.on = true
+    }
+
+    stop(): void {
+        this.on = false
+    }
+
+    getAngleError(): number {
+        return (this.angleError) ? this.angleError : 0
     }
 }

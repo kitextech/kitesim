@@ -39,7 +39,7 @@ export function updateDescriptionUI(kite: Kite, pf: PathFollow ) {
 
       newDescription += "alfa wing: " + (kite.wing.alfa * 180 / Math.PI).toFixed(1) + "<br />"
       newDescription += "alfa vertical wing : " + (kite.vWing.alfa * 180 / Math.PI).toFixed(1) + "<br />"
-      newDescription += "thrust: " + kite.thrust.getComponent(2).toFixed(1) + "<br />"
+      newDescription += "thrust: " + kite.getThrustVector().z.toFixed(1) + "<br />"
 
       var euler = new Euler(0,0,0, 'ZYX')
       euler.setFromQuaternion(kite.obj.quaternion, 'ZYX', false)
@@ -58,7 +58,7 @@ export function updateDescriptionUI(kite: Kite, pf: PathFollow ) {
 
       newDescription += "<br />"
       newDescription += "rudder: " + (new Euler().setFromQuaternion(kite.rudder.mesh.quaternion, 'XYZ').x * 180/Math.PI).toFixed(1) + "<br />"
-      newDescription += "angleError: " + pf.angleError.toFixed(1) + "<br />"
+      newDescription += "angleError: " + pf.getAngleError().toFixed(1) + "<br />"
       // newDescription += "angleToPoint: " + Math.floor(angleToPoint*180/Math.PI) + "<br />"
       // newDescription += "currentHeading: " + Math.floor(currentHeading*180/Math.PI) + "<br />"
 

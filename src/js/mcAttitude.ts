@@ -14,7 +14,7 @@ var ratesPIDS = [
     new PID(10, 0.0, 0.0, 100)
 ]
 
-class MCAttitude {
+export class MCAttitude {
     constructor(readonly angles: PID[], readonly rates: PID[]) {
     }
 

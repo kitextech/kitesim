@@ -2,13 +2,13 @@ import { PID, PointOnSphere } from './util'
 import { Euler, Quaternion, Vector2, Vector3 } from 'three'
 
 var posYPID = new PID(1, 0.0, 0.0, 500)
-var velYPID = new PID(1, 0.0, 0.0, 500)
+var velYPID = new PID(0.1, 0.0, 0.0, 500)
 
 var posHeadingPID = new PID(0.3, 0.0, 0.0, 500)
 var velHeadingPID = new PID(0.1, 0.0, 0.0, 500)
 
 
-class MCPosition {
+export class MCPosition {
     constructor() {
 
     }
@@ -17,8 +17,8 @@ class MCPosition {
         let posYError = Math.sin( ps.altitude/180 * Math.PI ) * 100 - pos.y
         let velSP = posYPID.update(posYError, dt)
         let velYError = velSP - vel.y
-        let baseThrust = -17
-        return baseThrust - velYPID.update(velYError, dt)
+        let baseThrust = 0.5
+        return baseThrust + velYPID.update(velYError, dt)
     }
 
     getAttiude(psSP: PointOnSphere, vel: Vector3, pos: Vector3, dt): Quaternion  {
@@ -42,16 +42,8 @@ class MCPosition {
 
         let velHeadingError = velSP - velXZTangential
 
-
-
         let euler = new Euler( Math.PI/2 + velHeadingPID.update(velHeadingError, dt), 0, 0, 'XYZ')
 
-        // let ratesError = rates.clone().sub(ratesSP)
-        // let moment = ratesError.toArray().map( (rateError, index) => {
-        //         return this.rates[index].update(rateError, dt)
-        //     } )
-
-        // return new (Function.bind.apply(Vector3, moment)) // missing a argument 
         return new Quaternion().setFromEuler(euler)
     }
 }

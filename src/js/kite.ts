@@ -124,9 +124,7 @@ export class Kite {
   velocity: Vector3
   mass: number
   
-  thrust = new Vector3(0, 0, -18) // N
-  thrustMax = new Vector3( 0, 0, -35) // N
-  thrustMin = new Vector3( 0, 0, 35) // N
+  thrust = 0.4 // N
 
   constructor(prop: KiteProperties) {
     this.obj = new Object3D(); //create an empty container
@@ -218,7 +216,7 @@ export class Kite {
 
     // update kite tether and position
     let FKite = aeroForcesKite.clone().applyQuaternion(this.obj.quaternion)
-      .add(this.thrust.clone().applyQuaternion(this.obj.quaternion))
+      .add(this.getThrustVector().applyQuaternion(this.obj.quaternion))
     
     for (let force of externalForces) {
       FKite.add(force.force)
@@ -230,11 +228,15 @@ export class Kite {
   }
 
   adjustThrustBy(delta: number) {
-    this.thrust.add( new Vector3(0, 0, -delta) ).max(this.thrustMax).min(this.thrustMin)
+    this.setThrust(this.thrust + delta)
   }
 
-  setThrust(thrust: Vector3) {
-    this.thrust = thrust.max(this.thrustMax).min(this.thrustMin)
+  setThrust(thrust: number) {
+    this.thrust = Math.max(-1, Math.min(1, thrust))
+  }
+
+  getThrustVector() {
+    return new Vector3(0, 0, this.thrust*-35)
   }
 
   getAttachmentPointsState(): AttachmentPointState[] {
