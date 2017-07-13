@@ -3,7 +3,7 @@ import { Euler, Quaternion, Vector2, Vector3 } from 'three'
 export class VTOL {
     rollStart: number = 0
     pitchStart: number = 0
-    rollForward: number = Math.PI/2
+    rollForward: number = Math.PI/8
     ratio: number = 0
     thrustStart: number = 0
     thrustForward: number = 0.9
@@ -37,7 +37,7 @@ export class VTOL {
         let pitch = (1-this.ratio) * this.pitchStart + this.ratio * pitchGoal
         let roll = (1-this.ratio) * this.rollStart + this.ratio * this.rollForward
 
-        let attitudeTarget = new Euler(roll, heading, pitch)
+        let attitudeTarget = new Euler(roll, heading, pitch, 'YZX')
 
         return new Quaternion().setFromEuler(attitudeTarget)
     }
