@@ -233,6 +233,10 @@ export class Kite {
     this.thrust.add( new Vector3(0, 0, -delta) ).max(this.thrustMax).min(this.thrustMin)
   }
 
+  setThrust(thrust: Vector3) {
+    this.thrust = thrust.max(this.thrustMax).min(this.thrustMin)
+  }
+
   getAttachmentPointsState(): AttachmentPointState[] {
     function attactmentPointState(attactmentPoint: Vector3) {
       return new AttachmentPointState(

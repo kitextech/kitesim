@@ -106,3 +106,7 @@ export class PID {
     return adjustment
   }
 }
+
+export class PointOnSphere {
+    constructor(readonly heading: number, readonly altitude: number) { }
+}

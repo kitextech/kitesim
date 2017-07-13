@@ -1,9 +1,6 @@
 import { Vector2, Vector3, Quaternion, Euler, ArrowHelper, Mesh, BoxGeometry, MeshLambertMaterial, Scene } from 'three'
 import { AeroSurfaceRotating } from './aeroSurface'
-
-export class PointOnSphere {
-    constructor(readonly heading: number, readonly altitude: number) { }
-}
+import { PointOnSphere } from './util'
 
 export class PathFollow {
     index: number
@@ -27,7 +24,7 @@ export class PathFollow {
         }
 
         this.quaternion = new Quaternion().setFromEuler(
-            new Euler(0, tc.heading / 180 * Math.PI, tc.altitude / 180 * Math.PI, 'YZX')
+            new Euler(0, -tc.heading / 180 * Math.PI, tc.altitude / 180 * Math.PI, 'YZX')
         )
         this.qConjugate = this.quaternion.clone().conjugate()
 
