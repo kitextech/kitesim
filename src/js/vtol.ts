@@ -7,6 +7,7 @@ export class VTOL {
     ratio: number = 0
     thrustStart: number = 0
     thrustForward: number = 0.9
+    transitionTime: number = 2 // seconds
 
     constructor() {}
 
@@ -19,7 +20,7 @@ export class VTOL {
     }
 
     updateRatio(dt: number): void {
-        this.ratio = Math.max(0, Math.min(1, this.ratio + dt / 2))
+        this.ratio = Math.max(0, Math.min(1, this.ratio + dt / this.transitionTime))
     }
 
     getRatio(): number {
