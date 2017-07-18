@@ -1,4 +1,4 @@
-import { Euler } from 'three'
+import { Euler, Quaternion, Vector3 } from 'three'
 import { Kite } from './kite'
 import { PathFollow } from './pathFollow'
 import * as C from './constants'
@@ -109,4 +109,28 @@ export class PID {
 
 export class PointOnSphere {
     constructor(readonly heading: number, readonly altitude: number) { }
+
+    getEuler(): Euler {
+      return new Euler(0,  -this.heading, this.altitude, 'YZX')
+    }
+
+    getQauternion(): Quaternion {
+      return new Quaternion().setFromEuler(this.getEuler())
+    }
+
+    distanceSimplifed(poS: PointOnSphere) {
+      let hdiff = this.heading-poS.heading
+      let adiff = this.altitude-poS.altitude
+      return Math.sqrt( hdiff*hdiff + adiff*adiff )
+    }
+}
+
+export function getPointOnSphere(pos: Vector3): PointOnSphere {
+  let heading = Math.atan2(pos.z, pos.x)
+  let altitude = Math.atan2(pos.y, Math.sqrt(pos.x*pos.x + pos.z+pos.z) )
+  return new PointOnSphere(heading, altitude)
+}
+
+export function degToRad(deg: number): number {
+  return deg/180*Math.PI
 }

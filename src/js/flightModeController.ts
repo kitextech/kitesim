@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { Vector3, Quaternion, Euler } from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
-import { Key, updateDescriptionUI, Pause, PID, PointOnSphere } from './util'
+import { Key, updateDescriptionUI, Pause, PID, PointOnSphere, getPointOnSphere, degToRad } from './util'
 import { Tether, tetherProperties, TetherProperties } from './tether'
 import { PathFollow } from './pathFollow'
 
@@ -32,6 +32,8 @@ export class FlightModeController {
     // velocity PID
     velocityPID = new PID(0.5, 0, 0.00, 100)
     velocitySp = 25
+    hoverTarget = new PointOnSphere(degToRad(40), degToRad(10))
+    hoverTargetPos: Vector3
     
     attitudeSPHelper = new THREE.AxisHelper( 10 )
     momentArrow = new THREE.ArrowHelper( new Vector3(1,0,0), new Vector3(0,0,0), 1, 0xffff00)
@@ -39,7 +41,9 @@ export class FlightModeController {
     mode: FlightMode = FlightMode.Position 
 
     constructor(readonly kite: Kite, readonly scene: THREE.Scene) {
-        this.pf = new PathFollow( new PointOnSphere(0, 30), 20, 40, this.kite.rudder, scene)
+        this.pf = new PathFollow( new PointOnSphere(0, degToRad(30)), 20, 40, this.kite.rudder, scene)
+
+
 
         scene.add(this.attitudeSPHelper)
 
@@ -57,7 +61,7 @@ export class FlightModeController {
 
         switch (this.mode) {
             case FlightMode.Position:
-                var attitudeSP = this.mcPosition.getAttiude( new PointOnSphere(40,10), this.kite.velocity, this.kite.obj.position, dt)
+                var attitudeSP = this.mcPosition.getAttiude( this.hoverTarget, this.kite.velocity, this.kite.obj.position, dt)
                 var ratesSP = this.mcAttitude.getRatesSP( this.kite.obj.quaternion, attitudeSP, this.kite.angularVelocity, dt )
                 moment = mcAttitude.getMomentsRates(this.kite.angularVelocity, ratesSP, dt)
 
@@ -78,7 +82,7 @@ export class FlightModeController {
 
                 this.kite.rudder.mesh.setRotationFromEuler( new Euler(0, - Math.PI / 2, (-angle - 8) / 180 * Math.PI, 'XYZ') )
 
-                                //visualisation
+                //visualisation
                 this.attitudeSPHelper.setRotationFromQuaternion(attitudeSP)
                 var kp = this.kite.obj.position
                 this.attitudeSPHelper.position.set(kp.x, kp.y, kp.z)
@@ -113,7 +117,7 @@ export class FlightModeController {
             case FlightMode.Position:
                 this.kite.setThrust( 
                     this.mcPosition.getThrust( 
-                        new PointOnSphere(30, 10), 
+                        this.hoverTarget, 
                         this.kite.velocity, 
                         this.kite.obj.position, 
                         dt ) 
@@ -155,6 +159,25 @@ export class FlightModeController {
                 break;
             case FlightMode.TransitionBackward:
                 this.mode = FlightMode.Position
+                break;
+            default:
+                break;
+        }
+    }
+
+    autoAdjustMode() {
+        switch (this.mode) {
+            case FlightMode.Position:
+                if (getPointOnSphere(this.kite.obj.position).distanceSimplifed( this.hoverTarget) < 0.2 ) { // rad
+                    this.mode = FlightMode.TransitionForward
+                    this.vtol.start(this.kite.obj.quaternion, this.kite.thrust)
+                }                     
+                break;
+            case FlightMode.TransitionForward:
+                if (this.kite.obj.position.z < 0) {
+                    this.mode = FlightMode.PathFollow
+                    this.pf.start()
+                } 
                 break;
             default:
                 break;

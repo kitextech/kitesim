@@ -25,17 +25,9 @@ export class PathFollow {
         }
 
         this.quaternion = new Quaternion().setFromEuler(
-            new Euler(0, -tc.heading / 180 * Math.PI, tc.altitude / 180 * Math.PI, 'YZX')
+            new Euler(0, -tc.heading, tc.altitude, 'YZX')
         )
         this.qConjugate = this.quaternion.clone().conjugate()
-
-        // var pointer = new ArrowHelper(
-        //     new Vector3(1, 0, 0).applyQuaternion(this.quaternion),
-        //     new Vector3(0, 0, 0),
-        //     10,
-        //     0xff0000)
-
-        // scene.add(pointer)
 
         this.box = new Mesh(
             new BoxGeometry(1, 1, 1),

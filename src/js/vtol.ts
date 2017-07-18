@@ -43,5 +43,3 @@ export class VTOL {
         return new Quaternion().setFromEuler(attitudeTarget)
     }
 }
-
-// export var vtol = new VTOL()

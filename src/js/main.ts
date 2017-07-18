@@ -2,7 +2,7 @@
 import * as THREE from 'three'
 import { Vector3, Quaternion, Euler } from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
-import { Key, updateDescriptionUI, Pause, PID, PointOnSphere } from './util'
+import { Key, updateDescriptionUI, Pause, PID } from './util'
 import { Tether, tetherProperties, TetherProperties } from './tether'
 import { PathFollow } from './pathFollow'
 
@@ -26,9 +26,10 @@ document.body.appendChild(renderer.domElement);
 // Orbiting controls in using mouse/trackpad
 let controls:THREE.OrbitControls = new OrbitControls(camera)
 controls.enableKeys = false
-camera.position.x = -5;
-camera.position.y = 5;
-camera.position.z = 2;
+controls.center.add(new Vector3(70, 20, 0))
+camera.position.x = -30;
+camera.position.y = 10;
+camera.position.z = -5;
 controls.update()
 
 // Scene light
@@ -92,7 +93,7 @@ function update(dt) {
     for (var k = 0; k < subFrameIterations; k++) {
         tether.updateTetherPositionAndForces(dtSub)
 
-        flightModeController.update(dtSub)
+        flightModeController.update(dtSub) // with sideeffects. 
         let moment = flightModeController.getMoment(dtSub)
                     
         kite.updateKitePositionAndForces(dtSub, tether.kiteTetherForces(), tether.getKiteTetherMass(), moment)
@@ -100,6 +101,7 @@ function update(dt) {
     }
 
     flightModeController.adjustThrust(dt)
+    flightModeController.autoAdjustMode()
 
     // Set the position of the boxes showing the tether.
     tether.renderObjects.forEach( (mesh, i) => {
