@@ -1,4 +1,5 @@
 import { Vector2, Vector3, Quaternion, Euler, ArrowHelper, Mesh, BoxGeometry, MeshLambertMaterial, Scene } from 'three'
+import * as THREE from 'three'
 import { AeroSurfaceRotating } from './aeroSurface'
 import { PointOnSphere } from './util'
 
@@ -28,22 +29,39 @@ export class PathFollow {
         )
         this.qConjugate = this.quaternion.clone().conjugate()
 
-        var pointer = new ArrowHelper(
-            new Vector3(1, 0, 0).applyQuaternion(this.quaternion),
-            new Vector3(0, 0, 0),
-            10,
-            0xff0000)
+        // var pointer = new ArrowHelper(
+        //     new Vector3(1, 0, 0).applyQuaternion(this.quaternion),
+        //     new Vector3(0, 0, 0),
+        //     10,
+        //     0xff0000)
 
-        scene.add(pointer)
+        // scene.add(pointer)
 
         this.box = new Mesh(
             new BoxGeometry(1, 1, 1),
             new MeshLambertMaterial({ color: 0xffff00 })
         )
         scene.add(this.box)
+
+        var segments = 64,
+        material = new THREE.LineBasicMaterial( { color: 0x0000ff } ),
+        geometry = new THREE.CircleGeometry( radius, segments )
+
+        // Remove center vertex
+        geometry.vertices.shift()
+        var line = new THREE.LineLoop( geometry, material )
+        line.setRotationFromQuaternion(this.quaternion)
+        line.rotateY(Math.PI/2)
+        let rc = new Vector3(75, 0, 0).applyQuaternion(this.quaternion)
+        line.position.set(rc.x, rc.y, rc.z)
+        // line.quaternion.set(this.quaternion.x, this)
+
+
+        // line.applyQuaternion
+        scene.add( line )
     }
 
-    update(position: Vector3, velocity: Vector3) {
+    updateGetRotationRate(position: Vector3, velocity: Vector3) {
 
         // move position in to local coordinate system
         let posLocal3D = position.applyQuaternion(this.qConjugate)
@@ -64,15 +82,24 @@ export class PathFollow {
         let vectorToTarget = this.points[this.index].clone().sub(posLocal2D)
         let angleToPoint = Math.atan2(vectorToTarget.x, vectorToTarget.y)
 
+        let y = new Vector2(velLocal.z, velLocal.y).normalize().dot(vectorToTarget)
+        let l2 = vectorToTarget.lengthSq()
+        let x = Math.sqrt(l2 - y*y)
+        let r = l2/(2*x)
+
+        let rotationRate = velocity.length() / r  // m/s / m  (rad/s)
+
         this.angleError = ((currentHeading - angleToPoint) * 180 / Math.PI) % 360
         if (this.angleError < -180) this.angleError += 360
         if (this.angleError > 180) this.angleError -= 360
 
-        let deltaAngle = Math.min(Math.max(-this.angleError / 8, -12), 12) - 8
+        // let deltaAngle = Math.min(Math.max(-this.angleError / 8, -12), 12) - 8
 
-        if (this.on) {
-            this.rudder.mesh.setRotationFromEuler(new Euler(0, - Math.PI / 2, deltaAngle / 180 * Math.PI), 'XYZ')
-        }
+        return Math.sign(this.angleError) * rotationRate * -1 // rotate opposite direction to the error
+
+        // if (this.on) {
+            // this.rudder.mesh.setRotationFromEuler(new Euler(0, - Math.PI / 2, deltaAngle / 180 * Math.PI), 'XYZ')
+        // }
     }
 
     toggle(): void {

@@ -26,9 +26,8 @@ export class MCAttitude {
         return new Vector3().fromArray(moment)
     }
 
-    getMomentAttitude(attitude:Quaternion, attitudeSP: Quaternion, rates: Vector3, dt: number) {
-
-        let errorG = attitudeSP.clone().multiply( attitude.clone().conjugate() ) // Full Quaternion Based Attitude Control for a Quadrotor
+    getRatesSP(attitude:Quaternion, attitudeSP: Quaternion, rates: Vector3, dt: number): Vector3 {
+         let errorG = attitudeSP.clone().multiply( attitude.clone().conjugate() ) // Full Quaternion Based Attitude Control for a Quadrotor
 
         let errorBody = attitude.clone().conjugate().multiply(errorG).multiply(attitude.clone())
 
@@ -43,7 +42,7 @@ export class MCAttitude {
                 return this.angles[index].update(angleError, dt)
             } )
 
-        return this.getMomentsRates(rates, new Vector3().fromArray(ratesSP), dt)
+        return new Vector3().fromArray(ratesSP)
     }
 }
 

@@ -42,7 +42,7 @@ export class MCPosition {
 
         let velHeadingError = velSP - velXZTangential
 
-        let euler = new Euler( Math.PI/2 + velHeadingPID.update(velHeadingError, dt), 0, 0, 'XYZ')
+        let euler = new Euler( Math.PI/2 + velHeadingPID.update(velHeadingError, dt), -currentHeading, 0, 'YXZ')
 
         return new Quaternion().setFromEuler(euler)
     }
