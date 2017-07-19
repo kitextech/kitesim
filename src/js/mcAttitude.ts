@@ -27,7 +27,7 @@ export class MCAttitude {
     }
 
     getRatesSP(attitude:Quaternion, attitudeSP: Quaternion, rates: Vector3, dt: number): Vector3 {
-         let errorG = attitudeSP.clone().multiply( attitude.clone().conjugate() ) // Full Quaternion Based Attitude Control for a Quadrotor
+        let errorG = attitudeSP.clone().multiply( attitude.clone().conjugate() ) // Full Quaternion Based Attitude Control for a Quadrotor
 
         let errorBody = attitude.clone().conjugate().multiply(errorG).multiply(attitude.clone())
 
