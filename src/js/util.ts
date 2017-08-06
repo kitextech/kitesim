@@ -15,15 +15,15 @@ export var Key = {
   X: 88,
   Z: 90,
   
-  isDown: function(keyCode) {
+  isDown: function(keyCode: number): boolean {
     return this._pressed[keyCode];
   },
 
-  onKeydown: function(event) {
+  onKeydown: function(event: KeyboardEvent) {
     this._pressed[event.keyCode] = true;
   },
 
-  onKeyup: function(event) {
+  onKeyup: function(event: KeyboardEvent) {
     delete this._pressed[event.keyCode];
   }
 };
@@ -138,4 +138,23 @@ export function getPointOnSphere(pos: Vector3): PointOnSphere {
 
 export function degToRad(deg: number): number {
   return deg/180*Math.PI
+}
+
+export class Cost {
+  N: number = 0
+  totalCost: number = 0
+
+  add(cost: number): void {
+    this.totalCost += cost
+    this.N += 1
+  }
+
+  mean(): number {
+    return this.totalCost/this.N
+  }
+
+  reset(): void {
+    this.N = 0
+    this.totalCost = 0
+  }
 }
