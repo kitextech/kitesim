@@ -14,6 +14,11 @@ export interface TetherProperties {
   cd: number
 }
 
+interface TetherState {
+  pos: Vector3[]
+  vel: Vector3[]
+}
+
 export let tetherProperties: TetherProperties = {
   segments: 10,
   totalLength: 70,
@@ -200,5 +205,17 @@ export class Tether {
     this.lineGeometryKite.vertices[1] = this.pos[this.indexEnd]
     this.lineGeometryKite.vertices[2] = this.pos[this.KIndex2]
     this.lineGeometryKite.verticesNeedUpdate = true
+  }
+
+  getState(): TetherState {
+    return {
+      pos: this.pos,
+      vel: this.vel
+    }
+  }
+
+  setState(state: TetherState) {
+    this.pos = state.pos
+    this.vel = state.vel
   }
 }

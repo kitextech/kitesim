@@ -4,7 +4,7 @@ import { Vector3, Quaternion, Euler } from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
 import { Key, updateDescriptionUI, Pause, PID, PointOnSphere, getPointOnSphere, degToRad } from './util'
 import { Tether, tetherProperties, TetherProperties } from './tether'
-import { PathFollow } from './pathFollow'
+import { PathFollow, PathFollowState } from './pathFollow'
 
 import * as OrbitControlsLibrary from 'three-orbit-controls'
 let OrbitControls = OrbitControlsLibrary(THREE)
@@ -16,11 +16,15 @@ import { VTOL } from './vtol'
 
 
 // Pathfollowing 
-enum FlightMode {
+export enum FlightMode {
     Position,
     TransitionForward,
     PathFollow,
     TransitionBackward
+}
+
+interface FlightModeControllerState {
+    pf: PathFollowState
 }
 
 export class FlightModeController {
@@ -105,10 +109,15 @@ export class FlightModeController {
                 break;
         }
         
-        // temporary for logging
-        this.momentArrow.setDirection(moment.clone().normalize())
-        this.momentArrow.setLength(moment.length()*10)
-   
+        if (moment.x != 0) {
+            // temporary for logging
+            this.momentArrow.setDirection(moment.clone().normalize())
+            this.momentArrow.setLength(moment.length()*10)
+            this.momentArrow.visible = true
+        } else {
+            this.momentArrow.visible = false
+        }
+
         return moment.max(new Vector3(-6,-6, -1)).min( new Vector3(6, 6, 1))
     }
 
@@ -182,5 +191,15 @@ export class FlightModeController {
             default:
                 break;
         }
+    }
+
+    getState(): FlightModeControllerState {
+        return {
+            pf: this.pf.getState()
+        }
+    }
+
+    setState(state: FlightModeControllerState) {
+        this.pf.setState(state.pf)
     }
 }

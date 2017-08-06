@@ -1,5 +1,5 @@
 // KITE
-import { Object3D, Mesh, Vector3, Matrix3, CylinderGeometry, MeshLambertMaterial, ExtrudeGeometry, Shape } from 'three'
+import { Object3D, Mesh, Vector3, Matrix3, CylinderGeometry, MeshLambertMaterial, ExtrudeGeometry, Shape, Quaternion } from 'three'
 import { AeroSurface, AeroSurfaceRotating } from "./AeroSurface"
 import * as C from "./Constants" 
 
@@ -37,6 +37,13 @@ export interface KiteProperties {
   fuselarge: FuselargeProp
   mass: number
   J: Matrix3
+}
+
+export interface KiteState {
+  pos: Vector3
+  ori: Quaternion
+  vel: Vector3
+  angVel: Vector3
 }
 
 export var kiteProp: KiteProperties = {
@@ -323,5 +330,21 @@ export class Kite {
     var material = new MeshLambertMaterial( { color: 0x00ff00 } );
     var mesh = new Mesh( geometry, material );
     return mesh
+  }
+
+  getState(): KiteState {
+    return {
+      pos: this.obj.position,
+      ori: this.obj.quaternion,
+      vel: this.velocity,
+      angVel: this.angularVelocity
+    }
+  }
+
+  setState(state: KiteState) {
+    this.obj.position.set(state.pos.x, state.pos.y, state.pos.z)
+    this.obj.quaternion.set(state.ori.x, state.ori.y, state.ori.z, state.ori.w)
+    this.velocity = state.vel
+    this.angularVelocity = state.angVel
   }
 }

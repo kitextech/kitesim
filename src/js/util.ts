@@ -105,6 +105,11 @@ export class PID {
 
     return adjustment
   }
+
+  reset() {
+    this.lastError = 0
+    this.integrator = 0
+  }
 }
 
 export class PointOnSphere {

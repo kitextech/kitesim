@@ -3,6 +3,10 @@ import * as THREE from 'three'
 import { AeroSurfaceRotating } from './aeroSurface'
 import { PointOnSphere } from './util'
 
+export interface PathFollowState {
+    index: number
+}
+
 export class PathFollow {
     index: number
     lookAheadDistance: number
@@ -13,7 +17,7 @@ export class PathFollow {
     box: Mesh
     angleError?: number
 
-    constructor(tc: PointOnSphere, radius: number, readonly N: number, readonly rudder: AeroSurfaceRotating, readonly scene: Scene) {
+    constructor(tc: PointOnSphere, readonly radius: number, readonly N: number, readonly rudder: AeroSurfaceRotating, readonly scene: Scene) {
         this.index = Math.floor(N / 2)
         this.lookAheadDistance = radius * 0.9
         this.points = []
@@ -55,10 +59,7 @@ export class PathFollow {
 
     updateGetRotationRate(position: Vector3, velocity: Vector3) {
 
-        // move position in to local coordinate system
-        let posLocal3D = position.applyQuaternion(this.qConjugate)
-        let posLocal2D = new Vector2(posLocal3D.z, posLocal3D.y)
-
+        let posLocal2D = this.positionLocal2D(position)
         let velLocal = velocity.applyQuaternion(this.qConjugate).setComponent(0, 0) // ignore x
 
         while (posLocal2D.distanceTo(this.points[this.index]) < this.lookAheadDistance) {
@@ -94,6 +95,17 @@ export class PathFollow {
         // }
     }
 
+    // move position in to local coordinate system
+    positionLocal2D(position: Vector3): Vector2 {
+        let posLocal3D = position.applyQuaternion(this.qConjugate)
+        return new Vector2(posLocal3D.z, posLocal3D.y)
+    }
+
+    distanceToPath(position: Vector3): number {
+        let pos2d = this.positionLocal2D(position)
+        return pos2d.length() - this.radius
+    }
+
     toggle(): void {
         this.on = !this.on
     }
@@ -108,5 +120,20 @@ export class PathFollow {
 
     getAngleError(): number {
         return (this.angleError) ? this.angleError : 0
+    }
+
+    getState(): PathFollowState {
+        return {
+            index: this.index
+        }
+    }
+
+    setState(state: PathFollowState) {
+        this.index = state.index
+    }
+
+    getCost(position: Vector3): number {
+        let dist = this.distanceToPath(position)
+        return dist*dist
     }
 }
