@@ -26,7 +26,7 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // Orbiting controls in using mouse/trackpad
-let controls:THREE.OrbitControls = new OrbitControls(camera)
+let controls:THREE.OrbitControls = new OrbitControls(camera, renderer.domElement)
 controls.enableKeys = false
 controls.target.add(new Vector3(70, 20, 0))
 camera.position.x = -30;
