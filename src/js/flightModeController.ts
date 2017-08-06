@@ -81,7 +81,7 @@ export class FlightModeController {
                 var angle = this.fwAttitude.getRudderAngle(ratesSP.x, this.kite.angularVelocity.x, dt)
                 var angle = Math.max(-16, Math.min(16, angle))
 
-                this.kite.rudder.mesh.setRotationFromEuler( new Euler(0, - Math.PI / 2, (-angle - 8) / 180 * Math.PI, 'XYZ') )
+                this.kite.rudder.mesh.setRotationFromEuler( new Euler(0, - Math.PI / 2, (-angle ) / 180 * Math.PI, 'XYZ') ) // - 8
 
                 //visualisation
                 this.attitudeSPHelper.setRotationFromQuaternion(attitudeSP)
@@ -95,7 +95,7 @@ export class FlightModeController {
                 var angle = this.fwAttitude.getRudderAngle(rotationRate, this.kite.angularVelocity.x, dt)
                 var angle = Math.max(-16, Math.min(16, angle))
 
-                this.kite.rudder.mesh.setRotationFromEuler( new Euler(0, - Math.PI / 2, (-angle - 8) / 180 * Math.PI, 'XYZ') )
+                this.kite.rudder.mesh.setRotationFromEuler( new Euler(0, - Math.PI / 2, (-angle ) / 180 * Math.PI, 'XYZ') ) // - 8
 
                 break;
             case FlightMode.TransitionBackward:

@@ -88,8 +88,15 @@ export class PID {
 
   lastError: number = 0
   integrator: number = 0
+  p: number
+  i: number
+  d: number
+  ff: number = 0
 
-  constructor(readonly p: number, readonly i: number, readonly d: number, readonly iAbsMax: number){
+  constructor(p: number, i: number, d: number, readonly iAbsMax: number){
+    this.p = p
+    this.i = i
+    this.d = d
   }
 
   update(error: number, dt: number): number {
@@ -99,7 +106,7 @@ export class PID {
 
     let adjustment = this.p * error + 
       this.i * this.integrator +
-      this.d * (this.lastError - error) / dt
+      this.d * (this.lastError - error) / dt + this.ff
 
     this.lastError = error
 

@@ -23,6 +23,8 @@ let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHei
 
 let renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.domElement.id = 'view3d'
+
 document.body.appendChild(renderer.domElement);
 
 // Orbiting controls in using mouse/trackpad
@@ -70,7 +72,6 @@ setUpListener(67, function() { // c
 
 // start rendering scene and setup callback for each frame
 let lastTime: number
-render(null) // start 
 
 function render(ms: number) {
     // we get passed a timestamp in milliseconds
@@ -120,6 +121,10 @@ function update(dt: number) {
     tether.updateLinePosition()
 
     updateDescriptionUI(kite, flightModeController.pf)
+
+    // plotting
+    let rudderAngle = new Euler().setFromQuaternion(kite.rudder.mesh.quaternion, 'XYZ').x * 180/Math.PI // degrees
+    slidingGraph.update((rudderAngle + 20) / 40 )
 }
 
 function setupLights() {
@@ -205,3 +210,47 @@ function setUpListener(keyCode: number, action: () => void, caller: Object) {
 
 var gui = new dat.GUI()
 gui.add(flightModeController, 'velocitySp', 10, 35)
+let rrpid = gui.addFolder("rollRate PID")
+
+rrpid.add(flightModeController.fwAttitude.rollPID, 'p', 0, 30)
+rrpid.add(flightModeController.fwAttitude.rollPID, 'i', 0, 1)
+rrpid.add(flightModeController.fwAttitude.rollPID, 'd', 0, 1)
+rrpid.add(flightModeController.fwAttitude.rollPID, 'ff', -2, 2)
+
+gui.add(flightModeController.pf, 'lookAheadRatio', 0, 1)
+
+
+class SlidingGraph {
+    ctx: CanvasRenderingContext2D
+    data: number[] = []
+
+    constructor(readonly canvas: HTMLCanvasElement) {
+        this.ctx=canvas.getContext("2d");
+        this.ctx.fillStyle = "rgba(255, 0, 255, 1)"
+    }
+
+    update(value: number) {
+        value = (1-value) * this.canvas.height
+
+        this.data.push(value)
+
+        this.ctx.clearRect(0,0,this.canvas.width, this.canvas.height)
+
+        for (var index = 0; index < this.data.length; index++) {
+            this.ctx.fillRect(index,this.data[index],1,1)
+        }
+
+        if (this.data.length == this.canvas.width) {
+            this.data.shift()
+        } 
+
+    }
+}
+
+let canvasElement = document.getElementById("canvas") as HTMLCanvasElement
+
+let slidingGraph = new SlidingGraph(canvasElement)
+
+
+
+render(null) // start 

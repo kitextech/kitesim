@@ -9,7 +9,7 @@ export interface PathFollowState {
 
 export class PathFollow {
     index: number
-    lookAheadDistance: number
+    lookAheadRatio: number = 0.9
     points: Vector2[] = []
     on: boolean = false
     quaternion: Quaternion
@@ -19,7 +19,6 @@ export class PathFollow {
 
     constructor(tc: PointOnSphere, readonly radius: number, readonly N: number, readonly rudder: AeroSurfaceRotating, readonly scene: Scene) {
         this.index = Math.floor(N / 2)
-        this.lookAheadDistance = radius * 0.9
         this.points = []
         this.N = N
         this.rudder = rudder
@@ -62,7 +61,7 @@ export class PathFollow {
         let posLocal2D = this.positionLocal2D(position)
         let velLocal: Vector3 = velocity.applyQuaternion(this.qConjugate).setComponent(0, 0) // ignore x
 
-        while (posLocal2D.distanceTo(this.points[this.index]) < this.lookAheadDistance) {
+        while (posLocal2D.distanceTo(this.points[this.index]) < this.lookAheadRatio * this.radius) {
             this.index = (this.index + 1) % this.N
         }
 
