@@ -13,7 +13,7 @@ export class MCPosition {
 
     }
 
-    getThrust(ps: PointOnSphere, vel: Vector3, pos: Vector3, dt): number {
+    getThrust(ps: PointOnSphere, vel: Vector3, pos: Vector3, dt: number): number {
         let posYError = Math.sin( ps.altitude ) * 100 - pos.y
         let velSP = posYPID.update(posYError, dt)
         let velYError = velSP - vel.y
@@ -21,7 +21,7 @@ export class MCPosition {
         return baseThrust + velYPID.update(velYError, dt)
     }
 
-    getAttiude(psSP: PointOnSphere, vel: Vector3, pos: Vector3, dt): Quaternion  {
+    getAttiude(psSP: PointOnSphere, vel: Vector3, pos: Vector3, dt: number): Quaternion  {
 
         let currentHeading = Math.atan2(pos.z, pos.x)
         let posHeadingError = psSP.heading - currentHeading

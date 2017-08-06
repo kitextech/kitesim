@@ -173,7 +173,7 @@ export class Kite {
     this.velocity = new Vector3( 0, 0, 0)
   }
 
-  updateKitePositionAndForces(dt, ktf: KiteTetherForces, externalMass: number, externalMoment: Vector3) {
+  updateKitePositionAndForces(dt: number, ktf: KiteTetherForces, externalMass: number, externalMoment: Vector3) {
     let forces = [
       new Force(ktf.spring1, this.tetherAttachmentPoint1),
       new Force(ktf.spring2, this.tetherAttachmentPoint2),
@@ -183,7 +183,7 @@ export class Kite {
     this.updateKitePositionAndForcesGeneral(dt, forces, externalMass, externalMoment)
   }
 
-  updateKitePositionAndForcesGeneral(dt, externalForces: Force[], externalMass: number, externalMoment: Vector3) {
+  updateKitePositionAndForcesGeneral(dt: number, externalForces: Force[], externalMass: number, externalMoment: Vector3) {
     //
     // KITE AERODYNAMICS
     //

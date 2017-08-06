@@ -6,9 +6,6 @@ import { Key, updateDescriptionUI, Pause, PID, PointOnSphere, getPointOnSphere, 
 import { Tether, tetherProperties, TetherProperties } from './tether'
 import { PathFollow, PathFollowState } from './pathFollow'
 
-import * as OrbitControlsLibrary from 'three-orbit-controls'
-let OrbitControls = OrbitControlsLibrary(THREE)
-
 import { mcAttitude, MCAttitude } from './mcAttitude'
 import { mcPosition, MCPosition } from './mcPosition'
 import { FWAttitude } from './fwAttitude'

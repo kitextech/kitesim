@@ -60,7 +60,7 @@ export class PathFollow {
     updateGetRotationRate(position: Vector3, velocity: Vector3) {
 
         let posLocal2D = this.positionLocal2D(position)
-        let velLocal = velocity.applyQuaternion(this.qConjugate).setComponent(0, 0) // ignore x
+        let velLocal: Vector3 = velocity.applyQuaternion(this.qConjugate).setComponent(0, 0) // ignore x
 
         while (posLocal2D.distanceTo(this.points[this.index]) < this.lookAheadDistance) {
             this.index = (this.index + 1) % this.N
@@ -133,7 +133,7 @@ export class PathFollow {
     }
 
     getCost(position: Vector3): number {
-        let dist = this.distanceToPath(position)
+        let dist = this.distanceToPath(position.clone())
         return dist*dist
     }
 }

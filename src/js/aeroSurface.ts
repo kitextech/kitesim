@@ -4,16 +4,16 @@ import { Kite, WingProperties } from './kite'
 import * as C from "./Constants" 
 
 export abstract class AeroSurfaceBase {
-  cl: (number) => number
-  cd: (number) => number
+  cl: (number: number) => number
+  cd: (number: number) => number
   alfa?: number
   lift?: Vector3
   drag?: Vector3
 
   constructor( readonly mesh: Mesh, 
       readonly prop: WingProperties, 
-      readonly liftUnitFunc: (Vector3) => Vector3, 
-      readonly dragUnitFunc: (Vector3) => Vector3) {
+      readonly liftUnitFunc: (v3: Vector3) => Vector3, 
+      readonly dragUnitFunc: (v3: Vector3) => Vector3) {
     this.cl = prop.sym ? clSym : clAsym
     this.cd = prop.sym ? cdSym : cdAsym
   }
@@ -29,7 +29,7 @@ export abstract class AeroSurfaceBase {
 }
 
 export class AeroSurface extends AeroSurfaceBase {
-  constructor(mesh, prop, liftUnitFunc, dragUnitFunc) {
+  constructor(mesh: Mesh, prop: WingProperties, liftUnitFunc: (v3: Vector3) => Vector3, dragUnitFunc: (v3: Vector3) => Vector3) {
     super(mesh, prop, liftUnitFunc, dragUnitFunc)
   }
   
@@ -45,7 +45,7 @@ export class AeroSurface extends AeroSurfaceBase {
 export class AeroSurfaceRotating extends AeroSurfaceBase {
   totalAero?: Vector3
 
-  constructor(mesh, prop, liftUnitFunc, dragUnitFunc) {
+  constructor(mesh: Mesh, prop: WingProperties, liftUnitFunc: (v3: Vector3) => Vector3, dragUnitFunc: (v3: Vector3) => Vector3) {
     super(mesh, prop, liftUnitFunc, dragUnitFunc)
   }
 
@@ -56,7 +56,7 @@ export class AeroSurfaceRotating extends AeroSurfaceBase {
     var liftKiteUnit = this.liftUnitFunc(apWingKite).normalize()
     var dragKiteUnit = this.dragUnitFunc(apWingKite).normalize()
 
-    var apWing = apWingKite.clone().applyQuaternion(this.mesh.quaternion.clone().conjugate()).setComponent(2,0)
+    var apWing: Vector3 = apWingKite.clone().applyQuaternion(this.mesh.quaternion.clone().conjugate()).setComponent(2,0)
     this.alfa = Math.atan2(apWing.y, apWing.x)
 
     this.calculateForcesInFrame(liftKiteUnit, dragKiteUnit, apWing.lengthSq(), this.alfa)

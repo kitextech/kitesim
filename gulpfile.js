@@ -38,6 +38,7 @@ gulp.task("live-reload-listen", function() {
 function bundle() {
     return watchedBrowserify
         .bundle()
+        .on('error', function (error) { console.error(error.toString()); })
         .pipe(source('bundle.js'))
         .pipe(gulp.dest("docs"))
         .pipe(livereload())
