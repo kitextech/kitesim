@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { Vector3, Quaternion, Euler } from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
 import { Key, updateDescriptionUI, Pause, PID, PointOnSphere, getPointOnSphere, degToRad } from './util'
-import { Tether, tetherProperties, TetherProperties } from './tether'
+import { KiteTether, tetherProperties, TetherProperties } from './tether'
 import { PathFollow, PathFollowState } from './pathFollow'
 
 import { mcAttitude, MCAttitude } from './mcAttitude'

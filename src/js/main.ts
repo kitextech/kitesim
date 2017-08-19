@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { Vector3, Quaternion, Euler } from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
 import { Key, updateDescriptionUI, Pause, PID, Cost } from './util'
-import { Tether, tetherProperties, TetherProperties } from './tether'
+import { Tether, KiteTether, tetherProperties, TetherProperties } from './tether'
 import { PathFollow } from './pathFollow'
 
 import * as OrbitControlsLibrary from 'three-orbit-controls'
@@ -40,20 +40,56 @@ controls.update()
 setupLights()
 
 // Kite 
-let kite = new Kite(kiteProp)
-kite.obj.add(new THREE.AxisHelper(2))
-kite.obj.rotateX(Math.PI / 2 )
-positionKiteAtTheEndOfTether(tetherProperties)
-scene.add(kite.obj)
+function getKite(): Kite {
+    let kite = new Kite(kiteProp)
+    kite.obj.add( new THREE.AxisHelper(2) )
+    kite.obj.rotateX( Math.PI / 2 )
+    scene.add( kite.obj )
+    return kite
+}
+
+let kite1 = getKite() 
+let kite2 = getKite() 
+
+let kiteTetherLength = 3 // meters
+
+let tether0 = new Tether(tetherProperties, new Vector3(1,0,0).normalize(), new Vector3(0,0,0))
+tether0.renderObjects.forEach( mesh => { scene.add( mesh ) })
+scene.add(tether0.lineMain)
+
 
 // Tether 
-let tether = new Tether(tetherProperties, kite.getAttachmentPointsState())
-tether.renderObjects.forEach(mesh => { scene.add( mesh ) })
-scene.add( tether.lineMain )
-scene.add( tether.lineKite )
+let tether1 = new KiteTether(tetherProperties, kiteTetherLength, new Vector3(1,0,0).normalize(), tether0.getEndState().pos)
+tether1.renderObjects.forEach(mesh => { scene.add( mesh ) })
+scene.add( tether1.lineMain )
+scene.add( tether1.lineKite )
+positionKiteAtTheEndOfTether(kite1, tether1.getMainTetherEndState().pos, kiteTetherLength)
+tether1.setKiteTetherState(kite1.getAttachmentPointsState())
 
-var flightModeController = new FlightModeController(kite, scene)
-setUpListener(81, flightModeController.toggleMode, flightModeController)
+
+
+
+
+// Tether 
+let tether2 = new KiteTether(tetherProperties, kiteTetherLength, new Vector3(1,0,0).normalize(), tether0.getEndState().pos)
+tether2.renderObjects.forEach(mesh => { scene.add( mesh ) })
+scene.add( tether2.lineMain )
+scene.add( tether2.lineKite )
+positionKiteAtTheEndOfTether(kite2, tether2.getMainTetherEndState().pos, kiteTetherLength)
+tether2.setKiteTetherState(kite2.getAttachmentPointsState())
+
+
+// let tether4 = new Tether(tetherProperties, new Vector3(1,0,0).normalize(), tether0.getEndState().pos)
+// tether4.renderObjects.forEach( mesh => { scene.add( mesh ) })
+// scene.add(tether4.lineMain)
+
+
+var flightModeController1 = new FlightModeController(kite1, scene)
+var flightModeController2 = new FlightModeController(kite2, scene)
+
+setUpListener(81, flightModeController1.toggleMode, flightModeController1)
+setUpListener(81, flightModeController2.toggleMode, flightModeController2)
+
 
 
 // Visual helpers
@@ -99,31 +135,72 @@ function update(dt: number) {
     let dtSub = dt/subFrameIterations
 
     for (var k = 0; k < subFrameIterations; k++) {
-        tether.updateTetherPositionAndForces(dtSub)
 
-        flightModeController.update(dtSub) // with sideeffects. 
-        let moment = flightModeController.getMoment(dtSub)
-                    
-        kite.updateKitePositionAndForces(dtSub, tether.kiteTetherForces(), tether.getKiteTetherMass(), moment)
-        tether.updateKiteTetherState(kite.getAttachmentPointsState())
+        
+        flightModeController1.update(dtSub) // with sideeffects. 
+        let moment1 = flightModeController1.getMoment(dtSub)
+        tether1.updateTetherPositionAndForces(dtSub)        
+        kite1.updateKitePositionAndForces(dtSub, tether1.kiteTetherForces(), tether1.getKiteTetherMass(), moment1)
+        tether1.setKiteTetherState(kite1.getAttachmentPointsState())
+        
+        flightModeController2.update(dtSub) // with sideeffects. 
+        let moment = flightModeController2.getMoment(dtSub)
+       
+        tether2.updateTetherPositionAndForces(dtSub)
+        kite2.updateKitePositionAndForces(dtSub, tether2.kiteTetherForces(), tether2.getKiteTetherMass(), moment)        
+        tether2.setKiteTetherState(kite2.getAttachmentPointsState())
+
+        tether0.updateTetherPositionAndForces(dtSub, tether1.FSpring[1].clone().add(tether2.FSpring[1]) .multiplyScalar(-1)  )
+        
+        tether1.setAnchorState(tether0.getEndState())
+        tether2.setAnchorState(tether0.getEndState())
     }
 
-    flightModeController.adjustThrust(dt)
-    flightModeController.autoAdjustMode()
+    flightModeController1.adjustThrust(dt)
+    flightModeController1.autoAdjustMode()
 
     // update cost
-    cost.add(flightModeController.pf.getCost(kite.obj.position))
+    cost.add(flightModeController1.pf.getCost(kite1.obj.position))
 
     // Set the position of the boxes showing the tether.
-    tether.renderObjects.forEach( (mesh, i) => {
-        mesh.position.set(tether.pos[i].x, tether.pos[i].y, tether.pos[i].z)
+    tether1.renderObjects.forEach( (mesh, i) => {
+        mesh.position.set(tether1.pos[i].x, tether1.pos[i].y, tether1.pos[i].z)
     })
-    tether.updateLinePosition()
+    tether1.updateLinePosition()
 
-    updateDescriptionUI(kite, flightModeController.pf)
+    updateDescriptionUI(kite1, flightModeController1.pf)
+
+
+
+    flightModeController2.adjustThrust(dt)
+    flightModeController2.autoAdjustMode()
+
+    // update cost
+    cost.add(flightModeController2.pf.getCost(kite2.obj.position))
+
+    // Set the position of the boxes showing the tether.
+    tether2.renderObjects.forEach( (mesh, i) => {
+        mesh.position.set(tether2.pos[i].x, tether2.pos[i].y, tether2.pos[i].z)
+    })
+    tether2.updateLinePosition()
+
+
+    // Set the position of the boxes showing the tether.
+    tether0.renderObjects.forEach( (mesh, i) => {
+        mesh.position.set(tether0.pos[i].x, tether0.pos[i].y, tether0.pos[i].z)
+    })
+    tether0.updateLinePosition()
+
+    // // Set the position of the boxes showing the tether.
+    // tether4.renderObjects.forEach( (mesh, i) => {
+    //     mesh.position.set(tether4.pos[i].x, tether4.pos[i].y, tether4.pos[i].z)
+    // })
+    // tether4.updateLinePosition()
+
+
 
     // plotting
-    let rudderAngle = new Euler().setFromQuaternion(kite.rudder.mesh.quaternion, 'XYZ').x * 180/Math.PI // degrees
+    let rudderAngle = new Euler().setFromQuaternion(kite1.rudder.mesh.quaternion, 'XYZ').x * 180/Math.PI // degrees
     slidingGraph.update((rudderAngle + 20) / 40 )
 }
 
@@ -145,22 +222,22 @@ function detectUserInput(dt: number) {
     var rotationRate = Math.PI // rad / s
     var thrustRate = 20 // N / s
 
-    if (Key.isDown(Key.UP)) kite.elevator.mesh.rotateZ(-rotationRate * dt)
-    if (Key.isDown(Key.LEFT)) kite.rudder.mesh.rotateZ(-rotationRate * dt)
-    if (Key.isDown(Key.DOWN)) kite.elevator.mesh.rotateZ(rotationRate * dt)
-    if (Key.isDown(Key.RIGHT)) kite.rudder.mesh.rotateZ(rotationRate * dt)
-    if (Key.isDown(Key.S)) kite.obj.rotateZ(-rotationRate / 4 * dt)
-    if (Key.isDown(Key.X)) kite.obj.rotateZ(rotationRate / 4 * dt)
-    if (Key.isDown(Key.A)) kite.adjustThrustBy(-thrustRate * dt)
-    if (Key.isDown(Key.Z)) kite.adjustThrustBy( thrustRate * dt)
+    // if (Key.isDown(Key.UP)) kite.elevator.mesh.rotateZ(-rotationRate * dt)
+    // if (Key.isDown(Key.LEFT)) kite.rudder.mesh.rotateZ(-rotationRate * dt)
+    // if (Key.isDown(Key.DOWN)) kite.elevator.mesh.rotateZ(rotationRate * dt)
+    // if (Key.isDown(Key.RIGHT)) kite.rudder.mesh.rotateZ(rotationRate * dt)
+    // if (Key.isDown(Key.S)) kite.obj.rotateZ(-rotationRate / 4 * dt)
+    // if (Key.isDown(Key.X)) kite.obj.rotateZ(rotationRate / 4 * dt)
+    // if (Key.isDown(Key.A)) kite.adjustThrustBy(-thrustRate * dt)
+    // if (Key.isDown(Key.Z)) kite.adjustThrustBy( thrustRate * dt)
 }
 
 function exportState() {
 
     let state = {
-            kite: kite.getState(),
-            tether: tether.getState(),
-            fmc: flightModeController.getState()
+            kite: kite1.getState(),
+            tether: tether1.getState(),
+            fmc: flightModeController1.getState()
         }
     
     console.log(state)
@@ -181,19 +258,19 @@ function loadState() {
         return v
     }
     let state = JSON.parse(stateJSONup, reciever)
-    kite.setState(state.kite)
-    tether.setState(state.tether)
-    flightModeController.setState(state.fmc)
-    flightModeController.mode = FlightMode.PathFollow
-    flightModeController.fwAttitude.reset()
+    kite1.setState(state.kite)
+    tether1.setState(state.tether)
+    flightModeController1.setState(state.fmc)
+    flightModeController1.mode = FlightMode.PathFollow
+    flightModeController1.fwAttitude.reset()
     cost.reset()
 }
 
 setUpListener( 76, loadState, this) // l
 
-function positionKiteAtTheEndOfTether(tp: TetherProperties) {
-    let dx = Math.sqrt(tp.kiteTLength*tp.kiteTLength - kite.tetherAttachmentPoint1.y*kite.tetherAttachmentPoint1.y)
-    kite.obj.position.add( new THREE.Vector3(tp.totalLength + dx, 0, 0) )
+function positionKiteAtTheEndOfTether(kite: Kite, mainTetherEnd: Vector3, kiteTetherLength: number) {
+    let dx = Math.sqrt(kiteTetherLength*kiteTetherLength - kite1.tetherAttachmentPoint1.y*kite1.tetherAttachmentPoint1.y)
+    kite.obj.position.add(  new THREE.Vector3(dx, 0, 0) ).add( mainTetherEnd )    
 }
 
 function setUpListener(keyCode: number, action: () => void, caller: Object) {
@@ -209,15 +286,28 @@ function setUpListener(keyCode: number, action: () => void, caller: Object) {
 // console.log(dat)
 
 var gui = new dat.GUI()
-gui.add(flightModeController, 'velocitySp', 10, 35)
-let rrpid = gui.addFolder("rollRate PID")
+let kite1Folder = gui.addFolder("Kite1")
 
-rrpid.add(flightModeController.fwAttitude.rollPID, 'p', 0, 30)
-rrpid.add(flightModeController.fwAttitude.rollPID, 'i', 0, 1)
-rrpid.add(flightModeController.fwAttitude.rollPID, 'd', 0, 1)
-rrpid.add(flightModeController.fwAttitude.rollPID, 'ff', -2, 2)
+kite1Folder.add(flightModeController1, 'velocitySp', 10, 35)
+let rrpid1 = kite1Folder.addFolder("rollRate PID")
+rrpid1.add(flightModeController1.fwAttitude.rollPID, 'p', 0, 30)
+rrpid1.add(flightModeController1.fwAttitude.rollPID, 'i', 0, 1)
+rrpid1.add(flightModeController1.fwAttitude.rollPID, 'd', 0, 1)
+rrpid1.add(flightModeController1.fwAttitude.rollPID, 'ff', -2, 2)
 
-gui.add(flightModeController.pf, 'lookAheadRatio', 0, 1)
+kite1Folder.add(flightModeController1.pf, 'lookAheadRatio', 0, 1)
+
+
+let kite2Folder = gui.addFolder("Kite2")
+
+kite2Folder.add(flightModeController1, 'velocitySp', 10, 35)
+let rrpid2 = kite2Folder.addFolder("rollRate PID")
+rrpid2.add(flightModeController1.fwAttitude.rollPID, 'p', 0, 30)
+rrpid2.add(flightModeController1.fwAttitude.rollPID, 'i', 0, 1)
+rrpid2.add(flightModeController1.fwAttitude.rollPID, 'd', 0, 1)
+rrpid2.add(flightModeController1.fwAttitude.rollPID, 'ff', -2, 2)
+
+kite2Folder.add(flightModeController1.pf, 'lookAheadRatio', 0, 1)
 
 
 class SlidingGraph {
