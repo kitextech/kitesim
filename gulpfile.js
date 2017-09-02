@@ -8,7 +8,7 @@ var livereload = require('gulp-livereload')
 
 var paths = {
     pages: ['src/*.html'],
-    images: ['src/images/*.png']
+    images: ['src/images/*.*']
 }
 
 var watchedBrowserify = watchify(browserify({

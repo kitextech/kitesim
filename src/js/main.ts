@@ -36,6 +36,8 @@ camera.position.y = 10;
 camera.position.z = -5;
 controls.update()
 
+controls.
+
 // Scene light
 setupLights()
 
@@ -89,6 +91,107 @@ var flightModeController2 = new FlightModeController(kite2, scene)
 
 setUpListener(81, flightModeController1.toggleMode, flightModeController1)
 setUpListener(81, flightModeController2.toggleMode, flightModeController2)
+
+
+
+
+
+// Enviroment
+
+
+// instantiate a loader
+var loader = new THREE.TextureLoader();
+
+var light
+var lightRadius = 10
+var lightPhase = 0
+var moon
+
+
+var loader = new THREE.TextureLoader();
+loader.crossOrigin = '';
+
+
+let promiseArray = [loadTexture("images/sky_povray.jpg"), loadTexture("images/moon_normal.jpg"), loadTexture("images/grass_grass_0103_01_tiled_s.jpg")]
+
+function loadTexture(fileName: string): Promise<THREE.Texture> {
+
+    return new Promise( (resolve, reject) => {
+    
+        // load a resource
+        loader.load(
+            // resource URL
+            fileName,
+            // Function when resource is loaded
+            function ( texture ) {
+                // do something with the texture
+                resolve(texture)
+            },
+            // Function called when download progresses
+            function ( xhr ) {
+                console.log( (xhr.loaded / xhr.total * 100) + '% loaded' )
+            },
+            // Function called when download errors
+            function ( xhr ) {
+                console.log( 'An error happened' )
+                reject(xhr)
+            }
+        )
+
+    })  
+}
+
+
+Promise.all(promiseArray)
+.then( textures => {
+    
+    var material = new THREE.MeshPhongMaterial( {
+            map: textures[0],
+            // normalMap: textures[1],
+            shininess: 5,
+            side: THREE.BackSide
+        })
+
+    var geometry = new THREE.SphereGeometry(500,64,64, 0, 2*Math.PI, 0, Math.PI/2)
+    moon = new THREE.Mesh( geometry, material )
+    //moon.castShadow = true;
+    scene.add( moon )
+
+
+    textures[2].wrapS = textures[2].wrapT = THREE.RepeatWrapping
+    textures[2].repeat.set(20,20)
+
+    var material2 = new THREE.MeshBasicMaterial( {
+        map: textures[2]
+    })
+
+    // let mat = new THREE.MeshBasicMaterial( { 
+    //  } )
+
+    var geo = new THREE.PlaneGeometry( 1000, 1000, 1 )
+    let plan = new THREE.Mesh( geo, material2 )
+    plan.rotateX(-Math.PI/2)
+
+    scene.add( plan )
+
+
+    // var geometry3 = new THREE.PlaneGeometry( 5, 20, 32 );
+    // var material3 = new THREE.MeshBasicMaterial( {color: 0xffff00, side: THREE.DoubleSide} );
+    // var plane = new THREE.Mesh( geometry3, material3 );
+    // scene.add( plane );
+
+} )
+.catch( error => {
+    alert(error)
+})
+
+
+
+
+
+
+
+
 
 
 
@@ -205,17 +308,17 @@ function update(dt: number) {
 }
 
 function setupLights() {
-    var hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 0.6)
-    hemiLight.color.setHSL(0.6, 1, 0.6)
-    hemiLight.groundColor.setHSL(0.095, 1, 0.75)
+    var hemiLight = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.0)
+    // hemiLight.color.setHSL(0.6, 1, 0.6)
+    // hemiLight.groundColor.setHSL(0.095, 1, 0.75)
     hemiLight.position.set(0, 500, 0)
     scene.add(hemiLight)
     
-    var dirLight = new THREE.DirectionalLight(0xffffff, 1)
-    dirLight.color.setHSL(0.1, 1, 0.95)
-    dirLight.position.set(20, 100, 0)
-    dirLight.position.multiplyScalar(50)
-    scene.add(dirLight)
+    // var dirLight = new THREE.DirectionalLight(0xffffff, 1)
+    // dirLight.color.setHSL(0.1, 1, 0.95)
+    // dirLight.position.set(20, 100, 0)
+    // dirLight.position.multiplyScalar(50)
+    // scene.add(dirLight)
 }
 
 function detectUserInput(dt: number) {
