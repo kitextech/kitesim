@@ -13,7 +13,6 @@ import * as OBJLoader from 'three-obj-loader'
 OBJLoader(THREE);
 
 import * as MTLLoader from 'three-mtl-loader'
-MTLLoader(THREE);
 
 import { mcAttitude, MCAttitude } from './mcAttitude'
 import { mcPosition, MCPosition } from './mcPosition'
@@ -54,7 +53,7 @@ var model1 = null;
 var model2 = null;
 var start_model = null;
 
-var mtlLoader = new THREE.MTLLoader();
+var mtlLoader = new MTLLoader()
 mtlLoader.load("http://127.0.0.1:8080/objects/Usungu.obj.mtl", function(materials) {
   materials.preload();
   var objLoader = new THREE.OBJLoader();
