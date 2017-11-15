@@ -1,6 +1,6 @@
 // three.js
 import * as THREE from 'three'
-import { Vector3, Quaternion, Euler } from 'three'
+import { Vector3, Quaternion, Euler, Box3} from 'three'
 import { Kite, kiteProp, AttachmentPointState} from "./kite"
 import { Key, updateDescriptionUI, Pause, PID, Cost } from './util'
 import { Tether, tetherProperties, TetherProperties } from './tether'
@@ -9,23 +9,71 @@ import { PathFollow } from './pathFollow'
 import * as OrbitControlsLibrary from 'three-orbit-controls'
 let OrbitControls = OrbitControlsLibrary(THREE)
 
+import * as OBJLoader from 'three-obj-loader'
+OBJLoader(THREE);
+
+import * as MTLLoader from 'three-mtl-loader'
+MTLLoader(THREE);
+
 import { mcAttitude, MCAttitude } from './mcAttitude'
 import { mcPosition, MCPosition } from './mcPosition'
 import { FWAttitude } from './fwAttitude'
 import { VTOL } from './vtol'
-
 import { FlightModeController, FlightMode } from './flightModeController'
-
 import dat from 'dat-gui'
 
 let scene = new THREE.Scene();
-let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.01, 50000);
 
-let renderer = new THREE.WebGLRenderer();
+let renderer = new THREE.WebGLRenderer({antialias : true});
 renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0xB1B1B1, 0);   //set background color and opacity of the renderer
 renderer.domElement.id = 'view3d'
 
 document.body.appendChild(renderer.domElement);
+
+//create skybox 
+//images by Heiko Irrgang: https://93i.de/p/free-skybox-texture-set/
+var geometry = new THREE.CubeGeometry(10000,10000,10000);
+var cubeMaterials = [
+    new THREE.MeshBasicMaterial({ map:new THREE.TextureLoader().load("http://127.0.0.1:8080/images/SunSetFront2048.png"),side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ map:new THREE.TextureLoader().load("http://127.0.0.1:8080/images/SunSetBack2048.png"),side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ map:new THREE.TextureLoader().load("http://127.0.0.1:8080/images/SunSetUp2048.png"),side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ map:new THREE.TextureLoader().load("http://127.0.0.1:8080/images/SunSetDown2048.png"),side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ map:new THREE.TextureLoader().load("http://127.0.0.1:8080/images/SunSetRight2048.png"),side: THREE.DoubleSide }),
+    new THREE.MeshBasicMaterial({ map:new THREE.TextureLoader().load("http://127.0.0.1:8080/images/SunSetLeft2048.png"),side: THREE.DoubleSide }),
+];
+
+var cube = new THREE.Mesh(geometry,cubeMaterials);
+scene.add(cube);
+
+//load drone-model (fusion360 model -> stl -> obj + mtl (make sure to compute vertex normals in Meshlab))
+
+//create global variables for the objects
+var model1 = null;
+var model2 = null;
+var start_model = null;
+
+var mtlLoader = new THREE.MTLLoader();
+mtlLoader.load("http://127.0.0.1:8080/objects/Usungu.obj.mtl", function(materials) {
+  materials.preload();
+  var objLoader = new THREE.OBJLoader();
+  objLoader.setMaterials(materials);
+  objLoader.load("http://127.0.0.1:8080/objects/Usungu.obj", function(object) {
+    object.scale.x = 0.0004;
+    object.scale.y = 0.0004;
+    object.scale.z = 0.0004;
+    object.rotateX(Math.PI / 2);   //rotate such that it matches the kite's startposition
+    object.rotateZ(Math.PI / 2); 
+    object.add(new THREE.AxisHelper(2))
+    var object1 = object.clone();
+    positionModelAtTheEndOfTether(tetherProperties, object) //ask what kiteTLength is!
+    model1 = object;     //save in global variables
+    model2 = object1; 
+    scene.add(model1);
+    //scene.add(model2)
+  });
+});
 
 // Orbiting controls in using mouse/trackpad
 let controls:THREE.OrbitControls = new OrbitControls(camera, renderer.domElement)
@@ -44,7 +92,7 @@ let kite = new Kite(kiteProp)
 kite.obj.add(new THREE.AxisHelper(2))
 kite.obj.rotateX(Math.PI / 2 )
 positionKiteAtTheEndOfTether(tetherProperties)
-scene.add(kite.obj)
+//scene.add(kite.obj)
 
 // Tether 
 let tether = new Tether(tetherProperties, kite.getAttachmentPointsState())
@@ -58,8 +106,8 @@ setUpListener(81, flightModeController.toggleMode, flightModeController)
 
 // Visual helpers
 let helper = new THREE.GridHelper(25, 25, 0x0000ff, 0x808080)
-scene.add(new THREE.AxisHelper(1))
 scene.add(helper)
+scene.add(new THREE.AxisHelper(1))
 
 // Pause
 let pause = new Pause()
@@ -74,8 +122,8 @@ setUpListener(67, function() { // c
 let lastTime: number
 
 function render(ms: number) {
-    // we get passed a timestamp in milliseconds
-    if (lastTime) {
+    //we get passed a timestamp in milliseconds
+    if (lastTime && model1) {
         update((ms-lastTime)/1000) // call update and pass delta time in seconds
     }
 
@@ -83,6 +131,9 @@ function render(ms: number) {
     requestAnimationFrame(render)
     renderer.render( scene, camera )
 }
+
+//variables used to find kite's position
+var kite_pos_current, kite_pos_new, kite_trans;
 
 // Main update loop which is run on every frame 
 function update(dt: number) {
@@ -98,19 +149,36 @@ function update(dt: number) {
     var subFrameIterations = 20 
     let dtSub = dt/subFrameIterations
 
+
+    //save position of kite before it is transformed
+    kite_pos_current = kite.obj.position.clone();
+    
     for (var k = 0; k < subFrameIterations; k++) {
         tether.updateTetherPositionAndForces(dtSub)
+
 
         flightModeController.update(dtSub) // with sideeffects. 
         let moment = flightModeController.getMoment(dtSub)
                     
         kite.updateKitePositionAndForces(dtSub, tether.kiteTetherForces(), tether.getKiteTetherMass(), moment)
         tether.updateKiteTetherState(kite.getAttachmentPointsState())
+        
     }
+    
+    //save new position of kite
+    kite_pos_new = kite.obj.position.clone();
+
+    //transform the 3D-model according to the kites transformation
+    kite_trans = kite_pos_new.sub(kite_pos_current);
+    model1.position.add(kite_trans);
+
+    //rotate the model such that it matches the kites rotation
+    model1.quaternion.slerp(kite.obj.quaternion,1);   
+    model1.rotateZ(Math.PI / 2);
 
     flightModeController.adjustThrust(dt)
     flightModeController.autoAdjustMode()
-
+    
     // update cost
     cost.add(flightModeController.pf.getCost(kite.obj.position))
 
@@ -196,17 +264,23 @@ function positionKiteAtTheEndOfTether(tp: TetherProperties) {
     kite.obj.position.add( new THREE.Vector3(tp.totalLength + dx, 0, 0) )
 }
 
+function positionModelAtTheEndOfTether(tp: TetherProperties, object) {
+    var box = new THREE.Box3().setFromObject( object );
+    var tetherattachmentpoint1_y = box.getSize().z/2;  //box.getSize().z is the wing span (biggest entity in bounding box)
+    let dx = Math.sqrt(tp.kiteTLength*tp.kiteTLength - tetherattachmentpoint1_y*tetherattachmentpoint1_y)
+    object.position.add( new THREE.Vector3(tp.totalLength + dx, 0, 0) )
+}
+
 function setUpListener(keyCode: number, action: () => void, caller: Object) {
     document.addEventListener('keydown', function (e) {
         var key = e.keyCode || e.which;
-        if (key === keyCode) { // 81 q
+        if (key === keyCode) { // 
             action.call(caller)
         }
     }, false);
 }
 
-
-// console.log(dat)
+/*console.log(dat)
 
 var gui = new dat.GUI()
 gui.add(flightModeController, 'velocitySp', 10, 35)
@@ -218,7 +292,7 @@ rrpid.add(flightModeController.fwAttitude.rollPID, 'd', 0, 1)
 rrpid.add(flightModeController.fwAttitude.rollPID, 'ff', -2, 2)
 
 gui.add(flightModeController.pf, 'lookAheadRatio', 0, 1)
-
+*/
 
 class SlidingGraph {
     ctx: CanvasRenderingContext2D
@@ -226,7 +300,7 @@ class SlidingGraph {
 
     constructor(readonly canvas: HTMLCanvasElement) {
         this.ctx=canvas.getContext("2d");
-        this.ctx.fillStyle = "rgba(255, 0, 255, 1)"
+        this.ctx.fillStyle = "rgba(50, 107, 52, 1)"
     }
 
     update(value: number) {
@@ -246,6 +320,7 @@ class SlidingGraph {
 
     }
 }
+
 
 let canvasElement = document.getElementById("canvas") as HTMLCanvasElement
 

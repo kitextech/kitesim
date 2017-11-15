@@ -1,5 +1,5 @@
 // KITE
-import { Object3D, Mesh, Vector3, Matrix3, CylinderGeometry, MeshLambertMaterial, ExtrudeGeometry, Shape, Quaternion } from 'three'
+import { Object3D, Mesh, Vector3, Matrix3, CylinderGeometry, MeshLambertMaterial, MeshPhongMaterial, ExtrudeGeometry, Shape, Quaternion } from 'three'
 import { AeroSurface, AeroSurfaceRotating } from "./AeroSurface"
 import * as C from "./Constants" 
 
@@ -160,8 +160,8 @@ export class Kite {
     
     this.createFuselarge(prop.fuselarge)
 
-    this.tetherAttachmentPoint1 = new Vector3(0, prop.wing.span/2, 0)
-    this.tetherAttachmentPoint2 = new Vector3(0, -prop.wing.span/2, 0)
+    this.tetherAttachmentPoint1 = new Vector3(0, prop.wing.span/2+0.4, 0)
+    this.tetherAttachmentPoint2 = new Vector3(0, -prop.wing.span/2-0.4, 0)
 
 
     this.Jinv = new Matrix3().getInverse(prop.J, function() {
@@ -300,7 +300,7 @@ export class Kite {
 
   createFuselarge(prop: FuselargeProp) {
     var geometry = new CylinderGeometry( prop.diameter, prop.diameter, prop.frontLength + prop.rearLength, 32 );
-    var material = new MeshLambertMaterial( {color: 0xffff00} );
+    var material = new MeshLambertMaterial( {color: 0xffff00, transparent: true, opacity: 0} );
     var cylinder = new Mesh( geometry, material );
     cylinder.position.set(0,0,(prop.rearLength-prop.frontLength)/2)
     cylinder.rotateX( Math.PI / 2 );
@@ -327,7 +327,7 @@ export class Kite {
     }
 
     var geometry = new ExtrudeGeometry( extrudeShape(prop), extrudeSettings(prop) );
-    var material = new MeshLambertMaterial( { color: 0x00ff00 } );
+    var material = new MeshPhongMaterial({ color: 0x326A34, specular: 0x050505,shininess: 100, transparent: true, opacity: 0});
     var mesh = new Mesh( geometry, material );
     return mesh
   }

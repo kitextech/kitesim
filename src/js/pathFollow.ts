@@ -34,12 +34,12 @@ export class PathFollow {
 
         this.box = new Mesh(
             new BoxGeometry(1, 1, 1),
-            new MeshLambertMaterial({ color: 0xffff00 })
+            new MeshLambertMaterial({ color: 0x326B34 })
         )
-        scene.add(this.box)
+        //scene.add(this.box)
 
         var segments = 64,
-        material = new THREE.LineBasicMaterial( { color: 0x0000ff } ),
+        material = new THREE.LineBasicMaterial( { color: 0xFFFFFF } ),
         geometry = new THREE.CircleGeometry( radius, segments )
 
         // Remove center vertex

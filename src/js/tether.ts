@@ -84,7 +84,7 @@ export class Tether {
 
       this.renderObjects.push(new Mesh(
         new BoxGeometry(0.2, 0.2, 0.2),
-        new MeshLambertMaterial({ color: 0xff0000 })
+        new MeshLambertMaterial({ color: 0x373737 })
       ))
     }
   }
@@ -113,9 +113,11 @@ export class Tether {
     )
 
     // line
-    let material = new LineBasicMaterial({ color: 0x0000ff })
+    let material = new LineBasicMaterial({ color: 0x7F7F7F })
     this.lineMain = new Line( this.lineGeometryMain, material )
     this.lineKite = new Line( this.lineGeometryKite, material );
+    this.lineMain.frustumCulled = false;    //if not included Three will think that the lines are outside the frustrum when camera gets close
+    this.lineKite.frustumCulled = false;
   }
 
   updateKiteTetherState(apState: AttachmentPointState[]) { // use local variables instead
