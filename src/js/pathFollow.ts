@@ -85,6 +85,8 @@ export class PathFollow {
         if (this.angleError < -180) this.angleError += 360
         if (this.angleError > 180) this.angleError -= 360
 
+        // implement more advanced version that calculates the actual arc. 
+
         // let deltaAngle = Math.min(Math.max(-this.angleError / 8, -12), 12) - 8
 
         return Math.sign(this.angleError) * rotationRate * -1 // rotate opposite direction to the error

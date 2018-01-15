@@ -5,7 +5,6 @@ import * as C from "./Constants"
 export interface TetherProperties {
   segments: number
   totalLength: number
-  kiteTLength: number
   density: number
   diameter: number
   k0: number
@@ -21,9 +20,8 @@ interface TetherState {
 
 export let tetherProperties: TetherProperties = {
   segments: 10,
-  totalLength: 70,
-  kiteTLength: 3, // meter
-  density: 950,
+  totalLength: 35,   // m
+  density: 950,      // kg/m3
   diameter: 0.002,
   k0: 2000, // spring konstant // N per e,
   k0_negative: 0, // spring konstant // N per e,
@@ -50,6 +48,144 @@ export class Tether {
 
   segmentLength: number
   indexEnd: number
+  
+  lineGeometry: Geometry
+  lineMain: Line
+  
+  // tp: TetherProperties
+
+  constructor(readonly tp: TetherProperties, direction: Vector3, startingPosition: Vector3) {
+    this.segmentLength = tp.totalLength / tp.segments // length of tether,
+    this.indexEnd = tp.segments
+    
+    this.constructMainTether(tp, direction, startingPosition)
+    this.constructLineGeometry()
+  }
+
+  // main tether
+  constructMainTether(tp: TetherProperties, direction: Vector3, startingPosition: Vector3) {
+    
+    for (var i = 0; i <= tp.segments; i++) {
+      this.tSegmentLengthDefault.push(this.segmentLength)
+      this.pos.push(startingPosition.clone().add( direction.clone().multiplyScalar(i * this.segmentLength) ) )
+      this.vel.push(new Vector3(0, 0, 0))
+      
+      this.mass.push(this.segmentLength * Math.PI * Math.pow(tp.diameter / 2, 2) * tp.density)
+      
+      this.renderObjects.push(new Mesh(
+        new BoxGeometry(0.2, 0.2, 0.2),
+        new MeshLambertMaterial({ color: 0x373737 })
+      ))
+    }
+  }
+  
+  constructLineGeometry() {
+    this.lineGeometry = new Geometry();
+    
+    // this.lineGeometry.vertices.push( new Vector3(0,0,0) )
+    for (var i = 0; i <= this.indexEnd; i++) {
+      this.lineGeometry.vertices.push( this.pos[i] )
+    }
+
+    // line
+    let material = new LineBasicMaterial({ color: 0x7F7F7F })
+    this.lineMain = new Line( this.lineGeometry, material )
+    this.lineMain.frustumCulled = false;    //if not included Three will think that the lines are outside the frustrum when camera gets close
+  }    
+    
+  updateTetherPositionAndForces(dt: number, endExternalForce: Vector3) {
+      
+    // Second to end of tether
+    for (var i = 1; i <= this.indexEnd; i++) {
+      this.segment[i] = this.pos[i].clone().sub(this.pos[i - 1])
+      this.segmentDir[i] = this.segment[i].clone().normalize()
+      this.tSegmentStretchVelocity[i] = this.segmentDir[i].dot(this.vel[i].clone().sub(this.vel[i - 1])) / this.tSegmentLengthDefault[i]
+      
+      let ap = C.WIND.clone().sub(this.vel[i])
+      let apAlongtSegment = this.segmentDir[i].clone().multiplyScalar(this.segmentDir[i].clone().dot(ap))
+      let windPerpendicular = ap.clone().sub(apAlongtSegment)
+      let currentLength = this.segment[i].length()
+      let tetherStretch = (currentLength - this.tSegmentLengthDefault[i]) / this.tSegmentLengthDefault[i]
+      let springConstant = tetherStretch > 0 ? this.tp.k0 : this.tp.k0_negative
+      
+      this.FSpring[i] = this.segmentDir[i].clone().multiplyScalar(- springConstant * (tetherStretch) - this.tp.d0 * this.tSegmentStretchVelocity[i])
+      this.FDrag[i] = windPerpendicular.multiplyScalar(1 / 2 * C.RHO * this.tp.diameter * currentLength * this.tp.cd * windPerpendicular.length())
+    }    
+    
+    // all tethers except the end and kite tethers
+    for (var i = 1; i < this.indexEnd; i++) {
+      this.FTotal[i] = this.FSpring[i].clone().sub(this.FSpring[i + 1]).add(this.FDrag[i])            
+    }
+
+    // the end tether segment
+    this.FTotal[this.indexEnd] = this.FSpring[this.indexEnd].clone().add(this.FDrag[this.indexEnd]).add(endExternalForce)
+    
+    // update position of the tether
+    for (var i = 1; i <= this.indexEnd; i++) {
+      var a = this.FTotal[i].divideScalar(this.mass[i]).add(C.GRAVITY)
+      this.vel[i].add(a.multiplyScalar(dt))
+      this.pos[i].add(this.vel[i].clone().multiplyScalar(dt))
+    }
+  }
+  
+  setAnchorState(apState: AttachmentPointState) {
+    this.pos[0].set(apState.pos.x, apState.pos.y, apState.pos.z)
+    this.vel[0].set(apState.vel.x, apState.vel.y, apState.vel.z)    
+  }
+
+  getAnchorState() {
+    return new AttachmentPointState( this.pos[0], this.vel[0])
+  }
+  
+  setEndState(apState: AttachmentPointState) {
+    this.pos[this.indexEnd].set(apState.pos.x, apState.pos.y, apState.pos.z)
+    this.vel[this.indexEnd].set(apState.vel.x, apState.vel.y, apState.vel.z)    
+  }
+
+  getEndState() {
+    return new AttachmentPointState( this.pos[this.indexEnd], this.vel[this.indexEnd])
+  }
+
+
+  updateLinePosition() {
+    for (var i = 1; i <= this.indexEnd; i++) {
+      this.lineGeometry.vertices[i] = this.pos[i]
+    }
+    this.lineGeometry.verticesNeedUpdate = true
+  }
+
+  getState(): TetherState {
+    return {
+      pos: this.pos,
+      vel: this.vel
+    }
+  }
+
+  setState(state: TetherState) {
+    this.pos = state.pos
+    this.vel = state.vel
+  }
+} 
+
+export class KiteTether {
+  pos: Vector3[] = []
+  vel: Vector3[] = []
+  mass: number[] = []
+  renderObjects: Mesh[] = []
+
+  // intermetiate loop calculation varialbles
+  segment: Vector3[] = []
+  segmentDir: Vector3[] = []
+  tSegmentLength: number[] = []
+  tSegmentLengthDefault: number[] = []
+  tSegmentStretchVelocity: number[] = []
+
+  FSpring: Vector3[] = []
+  FDrag: Vector3[] = []
+  FTotal: Vector3[] = []
+  
+  segmentLength: number
+  indexEnd: number
   KIndex1: number
   KIndex2: number
 
@@ -60,24 +196,22 @@ export class Tether {
   lineKite: Line
 
   // tp: TetherProperties
-
-  constructor(readonly tp: TetherProperties, apState: AttachmentPointState[]) {
+  constructor(readonly tp: TetherProperties, kiteTetherLength: number, direction: Vector3, startingPosition: Vector3) {    
     this.segmentLength = tp.totalLength / tp.segments // length of tether,
-    this.indexEnd = tp.segments - 1
-    this.KIndex1 = tp.segments
-    this.KIndex2 = tp.segments + 1
+    this.indexEnd = tp.segments
+    this.KIndex1 = tp.segments + 1
+    this.KIndex2 = tp.segments + 2
 
-    this.constructMainTether(tp)
-    this.constructKiteTether(tp)
-    this.updateKiteTetherState(apState)
+    this.constructMainTether(tp, direction, startingPosition)
+    this.constructKiteTether(tp, kiteTetherLength)    
     this.constructLineGeometry()
   }
 
   // main tether
-  constructMainTether(tp: TetherProperties) {
-    for (var i = 0; i < tp.segments; i++) {
+  constructMainTether(tp: TetherProperties, direction: Vector3, startingPosition: Vector3) {
+    for (var i = 0; i <= tp.segments; i++) {
       this.tSegmentLengthDefault.push(this.segmentLength)
-      this.pos.push(new Vector3((i + 1) * this.segmentLength, 0, 0))
+      this.pos.push(startingPosition.clone().add( direction.clone().multiplyScalar( (i) * this.segmentLength ) ) )
       this.vel.push(new Vector3(0, 0, 0))
 
       this.mass.push(this.segmentLength * Math.PI * Math.pow(tp.diameter / 2, 2) * tp.density)
@@ -90,10 +224,10 @@ export class Tether {
   }
 
   // kite tethers
-  constructKiteTether(tp: TetherProperties) {
+  constructKiteTether(tp: TetherProperties, kiteTetherLength: number) {
     for (var i = 0; i < 2; i++) {
-      this.tSegmentLengthDefault.push(tp.kiteTLength)
-      this.mass.push(tp.kiteTLength * Math.PI * Math.pow(tp.diameter / 2, 2) * tp.density)
+      this.tSegmentLengthDefault.push(kiteTetherLength)
+      this.mass.push(kiteTetherLength * Math.PI * Math.pow(tp.diameter / 2, 2) * tp.density)      
     }
   }
 
@@ -120,22 +254,12 @@ export class Tether {
     this.lineKite.frustumCulled = false;
   }
 
-  updateKiteTetherState(apState: AttachmentPointState[]) { // use local variables instead
-    let that = this
-    function setState(state: AttachmentPointState, i: number) {
-      that.pos[i] = state.pos
-      that.vel[i] = state.vel
-    }
-
-    apState.forEach((state, i) => { setState(state, i + that.KIndex1) })
-  }
-
   updateTetherPositionAndForces(dt: number) {
 
     // First segment
-    this.segment[0] = this.pos[0].clone()
-    this.segmentDir[0] = this.segment[0].clone().normalize()
-    this.tSegmentStretchVelocity[0] = this.segmentDir[0].dot(this.vel[0].clone()) / this.tSegmentLengthDefault[0]
+    // this.segment[0] = this.pos[0].clone()
+    // this.segmentDir[0] = this.segment[0].clone().normalize()
+    // this.tSegmentStretchVelocity[0] = this.segmentDir[0].dot(this.vel[0].clone()) / this.tSegmentLengthDefault[0]
 
     // Second to end of tether
     for (var i = 1; i <= this.indexEnd; i++) {
@@ -153,7 +277,7 @@ export class Tether {
     this.tSegmentStretchVelocity[this.KIndex2] = this.segmentDir[this.KIndex2].dot(this.vel[this.KIndex2].clone().sub(this.vel[this.indexEnd])) / this.tSegmentLengthDefault[this.KIndex1]
 
     // all tethers
-    for (var i = 0; i <= this.KIndex2; i++) { // calculate forces for main and kite tethers
+    for (var i = 1; i <= this.KIndex2; i++) { // calculate forces for main and kite tethers
       let ap = C.WIND.clone().sub(this.vel[i])
       let apAlongtSegment = this.segmentDir[i].clone().multiplyScalar(this.segmentDir[i].clone().dot(ap))
       let windPerpendicular = ap.clone().sub(apAlongtSegment)
@@ -166,7 +290,7 @@ export class Tether {
     }
 
     // all tethers except the end and kite tethers
-    for (var i = 0; i < this.indexEnd; i++) {
+    for (var i = 1; i < this.indexEnd; i++) {
       this.FTotal[i] = this.FSpring[i].clone().sub(this.FSpring[i + 1]).add(this.FDrag[i])
     }
 
@@ -177,13 +301,33 @@ export class Tether {
       .add(this.FDrag[this.indexEnd])
 
     // update position of the tether
-    for (var i = 0; i <= this.indexEnd; i++) {
+    for (var i = 1; i <= this.indexEnd; i++) {
       var a = this.FTotal[i].divideScalar(this.mass[i]).add(C.GRAVITY)
       this.vel[i].add(a.multiplyScalar(dt))
       this.pos[i].add(this.vel[i].clone().multiplyScalar(dt))
     }
   }
 
+  setKiteTetherState(apState: AttachmentPointState[]) { // use local variables instead
+    let that = this
+    function setState(state: AttachmentPointState, i: number) {
+      that.pos[i] = state.pos
+      that.vel[i] = state.vel
+    }
+    
+    apState.forEach((state, i) => { setState(state, i + that.KIndex1) })
+  }
+  
+  setAnchorState(apState: AttachmentPointState) {
+    this.pos[0].set(apState.pos.x, apState.pos.y, apState.pos.z)
+    this.vel[0].set(apState.vel.x, apState.vel.y, apState.vel.z)    
+  }
+  
+  getMainTetherEndState(): AttachmentPointState {
+    return new AttachmentPointState( this.pos[this.indexEnd], this.vel[this.indexEnd])
+  }
+
+  
   kiteTetherForces(): KiteTetherForces {
     return {
       spring1: this.FSpring[this.KIndex1].clone(),
