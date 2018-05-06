@@ -16,7 +16,7 @@ import { VTOL } from './vtol'
 
 import { FlightModeController, FlightMode } from './flightModeController'
 
-import dat from 'dat-gui'
+import dat from 'dat.gui'
 
 let scene = new THREE.Scene();
 let camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -39,14 +39,14 @@ controls.update()
 // Scene light
 setupLights()
 
-// Kite 
+// Kite
 let kite = new Kite(kiteProp)
 kite.obj.add(new THREE.AxisHelper(2))
 kite.obj.rotateX(Math.PI / 2 )
 positionKiteAtTheEndOfTether(tetherProperties)
 scene.add(kite.obj)
 
-// Tether 
+// Tether
 let tether = new Tether(tetherProperties, kite.getAttachmentPointsState())
 tether.renderObjects.forEach(mesh => { scene.add( mesh ) })
 scene.add( tether.lineMain )
@@ -84,7 +84,7 @@ function render(ms: number) {
     renderer.render( scene, camera )
 }
 
-// Main update loop which is run on every frame 
+// Main update loop which is run on every frame
 function update(dt: number) {
     if (pause.on) return
 
@@ -93,17 +93,17 @@ function update(dt: number) {
 
     detectUserInput(dt) // detect any keypresses and update accordinly
 
-    // increase the amount of numerical integrations for each frame. 
+    // increase the amount of numerical integrations for each frame.
     // Especially increase the stability of the tether calculations
-    var subFrameIterations = 20 
+    var subFrameIterations = 20
     let dtSub = dt/subFrameIterations
 
     for (var k = 0; k < subFrameIterations; k++) {
         tether.updateTetherPositionAndForces(dtSub)
 
-        flightModeController.update(dtSub) // with sideeffects. 
+        flightModeController.update(dtSub) // with sideeffects.
         let moment = flightModeController.getMoment(dtSub)
-                    
+
         kite.updateKitePositionAndForces(dtSub, tether.kiteTetherForces(), tether.getKiteTetherMass(), moment)
         tether.updateKiteTetherState(kite.getAttachmentPointsState())
     }
@@ -133,7 +133,7 @@ function setupLights() {
     hemiLight.groundColor.setHSL(0.095, 1, 0.75)
     hemiLight.position.set(0, 500, 0)
     scene.add(hemiLight)
-    
+
     var dirLight = new THREE.DirectionalLight(0xffffff, 1)
     dirLight.color.setHSL(0.1, 1, 0.95)
     dirLight.position.set(20, 100, 0)
@@ -162,7 +162,7 @@ function exportState() {
             tether: tether.getState(),
             fmc: flightModeController.getState()
         }
-    
+
     console.log(state)
     console.log(JSON.stringify(state))
 
@@ -242,7 +242,7 @@ class SlidingGraph {
 
         if (this.data.length == this.canvas.width) {
             this.data.shift()
-        } 
+        }
 
     }
 }
@@ -253,4 +253,4 @@ let slidingGraph = new SlidingGraph(canvasElement)
 
 
 
-render(null) // start 
+render(null) // start
