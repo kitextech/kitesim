@@ -4,7 +4,7 @@ module.exports = [{
     mode: "development",
     entry: "./src/programs/index.ts",
     output: {
-        path: path.resolve(__dirname, 'dist'), // string,
+        path: path.resolve(__dirname, 'docs'), // string,
         filename: "bundle.js"
     },
     resolve: {
