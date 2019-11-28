@@ -1,29 +1,29 @@
 {
   "name": "kitesim",
   "version": "1.0.0",
-  "description": "a realtime dynamic numerical model model of a tether and fixed wing kite",
-  "main": "gulp",
+  "description": "A Airborne wind energy system simulator writen in typescript",
+  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest",
+    "web": "webpack",
+    "build": "tsc -p tsconfig_headless.json",
+    "headless": "node logger/src/programs/headless.js",
+    "multi": "node logger/src/programs/headlessMulti.js"
   },
   "author": "Andreas Okholm",
-  "license": "GPL-3.0",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/jest": "^24.0.16",
+    "@types/node": "^12.6.8",
+    "jest": "^24.8.0",
+    "three": "^0.106.2",
+    "ts-jest": "^24.0.2",
+    "ts-loader": "^6.0.4",
+    "typescript": "^3.5.3",
+    "webpack": "^4.36.1",
+    "webpack-cli": "^3.3.6"
+  },
   "dependencies": {
-    "@types/dat.gui": "^0.7.0",
-    "@types/three": "^0.84.19",
-    "browserify": "^14.4.0",
-    "dat.gui": "^0.7.2",
-    "gulp": "^3.9.1",
-    "gulp-livereload": "^3.8.1",
-    "gulp-typescript": "^3.1.7",
-    "gulp-util": "^3.0.8",
-    "install": "^0.10.1",
-    "npm": "^5.3.0",
-    "three": "^0.86.0",
-    "three-orbit-controls": "^82.1.0",
-    "tsify": "^3.0.1",
-    "typescript": "^2.4.1",
-    "vinyl-source-stream": "^1.1.0",
-    "watchify": "^3.9.0"
+    "csv-parse": "^4.6.5"
   }
 }

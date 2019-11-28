@@ -4,8 +4,9 @@
         "removeComments": true,
         "preserveConstEnums": true,
         "esModuleInterop": true,
-        "sourceMap": true,
-        "lib": ["dom", "es6", "es2017"]
+        "sourceMap": false,
+        "lib": ["dom", "es6", "es2017"],
+        "outDir": "logger/"
     },
     "include": [
         "src/*.ts", "src/*/*.ts"

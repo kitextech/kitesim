@@ -1,5 +1,4 @@
-import { PID } from './util'
-import { Euler, Quaternion, Vector3 } from 'three'
+import { PID } from '../other/util'
 
 
 export class FWAttitude {

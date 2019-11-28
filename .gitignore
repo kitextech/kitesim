@@ -1,1 +1,5 @@
 /node_modules
+/logger/
+/dist/bundle.js
+/dist/playground.js
+/data

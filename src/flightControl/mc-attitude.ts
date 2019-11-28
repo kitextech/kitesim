@@ -1,17 +1,17 @@
-import { PID } from './util'
-import { Euler, Quaternion, Vector3 } from 'three'
+import { PID } from '../other/util'
+import { Quaternion, Vector3 } from 'three'
 
 
 var anglesPIDS = [
-    new PID(1,0.0,0.0,100),
-    new PID(1,0.0,0.0,100),
-    new PID(1,0.0,0.0,100)
+    new PID(1,0.1,0.0,100),
+    new PID(1,0.1,0.0,100),
+    new PID(1,0.1,0.0,100)
 ]
 
 var ratesPIDS = [
-    new PID(10, 0.0, 0.0, 100),
-    new PID(10, 0.0, 0.0, 100),
-    new PID(10, 0.0, 0.0, 100)
+    new PID(1, 0.01, 0.0, 10),
+    new PID(1, 0.01, 0.0, 10),
+    new PID(1, 0.01, 0.0, 10)
 ]
 
 export class MCAttitude {
@@ -21,12 +21,13 @@ export class MCAttitude {
     getMomentsRates(rates: Vector3, ratesSP: Vector3, dt: number): Vector3 {
         let ratesError = ratesSP.clone().sub(rates)
         let moment = ratesError.toArray().map( (rateError, index) => {
-                return this.rates[index].update(rateError, dt)
+                return this.rates[index].update(rateError, dt) //                 return this.rates[index].update(rateError, dt)
+
             } )
         return new Vector3().fromArray(moment)
     }
 
-    getRatesSP(attitude:Quaternion, attitudeSP: Quaternion, rates: Vector3, dt: number): Vector3 {
+    getRatesSP(attitude:Quaternion, attitudeSP: Quaternion, dt: number): Vector3 {
         let errorG = attitudeSP.clone().multiply( attitude.clone().conjugate() ) // Full Quaternion Based Attitude Control for a Quadrotor
 
         let errorBody = attitude.clone().conjugate().multiply(errorG).multiply(attitude.clone())
@@ -39,7 +40,7 @@ export class MCAttitude {
         var errorAngles = [errorBody.x, errorBody.y, errorBody.z].map( e => e*modifier ) // error.w
 
         let ratesSP = errorAngles.map((angleError, index) => {
-                return this.angles[index].update(angleError, dt)
+                return this.angles[index].update(angleError, dt) //                 return this.angles[index].update(angleError, dt)
             } )
 
         return new Vector3().fromArray(ratesSP)
