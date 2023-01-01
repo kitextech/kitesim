@@ -18,10 +18,10 @@
     "jest": "^24.8.0",
     "three": "^0.106.2",
     "ts-jest": "^24.0.2",
-    "ts-loader": "^6.0.4",
+    "ts-loader": "^9.4.2",
     "typescript": "^3.5.3",
-    "webpack": "^4.36.1",
-    "webpack-cli": "^3.3.6"
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
   },
   "dependencies": {
     "csv-parse": "^4.6.5"
